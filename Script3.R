@@ -98,6 +98,7 @@ snn.fit <- function (x, y, clust.method = "PAM", classical=FALSE, ...)
   }
   if(class(y)=="logical"){
     model <- glm (Target ~ ., data=dataframe, family=binomial())
+    
     model <- step(model, trace=0)
   }
   
