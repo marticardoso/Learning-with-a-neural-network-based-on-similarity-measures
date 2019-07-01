@@ -2,8 +2,7 @@ library(cluster)
 library(glmnet)
 library(StatMatch)
 
-snn <- function (formula, data, subset=NULL, weights, na.action,
-                method = "glm", clust.method = "PAM", x = FALSE, y = FALSE,
+snn <- function (formula, data, subset=NULL, weights, na.action, x = FALSE, y = FALSE,
                 contrasts = NULL, ...)
 {
   ret.x <- x
@@ -25,7 +24,7 @@ snn <- function (formula, data, subset=NULL, weights, na.action,
   y <- model.response(mf)
   x <- model.matrix(mt, mf, contrasts)
   print(nrow(x))
-  z <-  snn.fit(x, y, method=method, clust.method=clust.method, ...)
+  z <-  snn.fit(x, y, ...)
   
   # predict test data
   
@@ -69,7 +68,7 @@ snn <- function (formula, data, subset=NULL, weights, na.action,
 }
 
 
-snn.fit <- function (x, y, clust.method = "PAM", method="glm", classical=FALSE, simil.types=list(),...)
+snn.fit <- function (x, y, method="glm", classical=FALSE, simil.types=list(),...)
 {
   if (is.null(n <- nrow(x))) stop("'x' must be a matrix")
   if(n == 0L) stop("0 (non-NA) cases")
@@ -92,7 +91,7 @@ snn.fit <- function (x, y, clust.method = "PAM", method="glm", classical=FALSE, 
     learn.data <- x.simils
   }
   
-  clusters.idxs <- snn.findclusters(learn.data,method=clust.method,...)
+  clusters.idxs <- snn.findclusters(learn.data,...)
   
   medoids <- x[clusters.idxs,]
   
@@ -167,44 +166,55 @@ snn.createRegressionModel <- function(dataframe,method="lm"){
   
 }
 
-snn.findclusters <- function(x,       #Dataset
-                             M= NULL, #Number of clusters
-                             method,  #Clustering method
+#Function to find the clusters
+snn.findclusters <- function(x,         #Dataset
+                             clust.method = 'R', # Clustering method
                              clust.metric="euclidean", # (PAM)
                              clust.stand=FALSE,        # (PAM)
-                             p = NULL,                 # (Binomial)
-                             lambda = NULL,            # (Poison)
                              ...){
-  n <- nrow(x)
-  if(is.null(M)){
-    M = max(0.1*n,1)
-  }
+  N <- nrow(x)
+  M <- snn.numberOfClusters(N, ...)
   
-  if(method=="PAM"){
-    cat("[Clustering] Running PAM...\n")
+  if(clust.method=="PAM"){
+    cat("[Clustering] PAM...\n")
     dataset.pam <- pam (x, k=M, metric = clust.metric, stand=clust.stand, keep.diss=FALSE, keep.data=FALSE)
     return(dataset.pam$id.med)  
   }
-  else if(method=="Uniform"){
-    cat("[Clustering]: Uniform\n")
-    return(sample(1:n,M))
-  }
-  else if(method=="Binomial"){
-    cat("[Clustering]: Binomial\n")
-    if(is.null(p)) 
-      p = M/n
-    r <- rbinom(n, 1, p)
-    return(which(r>0))
-  }
-  else if(method=="Poisson"){
-    cat("[Clustering]: Poisson\n")
-    if(is.null(lambda))
-      lambda = M/n
-    r <- rpois(n, lambda)
-    return(which(r>0))
+  else if(clust.method=="R" || clust.method=="Random"){
+    cat("[Clustering] Random\n")
+    return(sample(1:N,M))
   }
   else 
-    stop(gettextf("Clustering method '%s' is not supported.", method))
+    stop(gettextf("Clustering method '%s' is not supported. Supported methods: PAM and Random.", clust.method))
+}
+
+# Method to find the number of clusters
+# hp <- Estimation of the proportion of clusters.
+# nclust.method <- method to decide the number of clusters
+snn.numberOfClusters <- function(N, hp=1, nclust.method='C'){
+
+  if(nclust.method=="U"|| nclust.method=="Uniform"){
+    cat("[Num of clusters method]: Uniform")
+    M <- round(runif(1,1,N*hp))
+  }
+  else if(nclust.method=="B" || nclust.method=="Binomial"){
+    cat("[Num of clusters method]: Binomial")
+    M <- rbinom(1,N,hp)
+  }
+  else if(nclust.method=="P" || nclust.method=="Poisson"){
+    cat("[Num of clusters method]: Poisson")
+    M <- min(rpois(1, N*hp),N)
+  }
+  else if(nclust.method=="C" || nclust.method=="Constant"){
+    cat("[Num of clusters method]: Constant")
+    M <- floor(hp*N)
+  }
+  else 
+    stop(gettextf("Number of clusters method '%s' is not supported. Methods supported: Uniform (U), Binomial (B), Poisson (P) and Constant(C).", nclust.method))
+  
+  M <- max(M,1)
+  cat(" - ", M,"\n")
+  M
 }
 
 print.snn <- function(x, digits = max(3L, getOption("digits") - 3L), ...)
