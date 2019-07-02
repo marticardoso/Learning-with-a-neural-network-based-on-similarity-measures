@@ -16,7 +16,7 @@ library(faraway)
 #First we load some useful function for the model selection task
 source('SNN.R')
 
-r1 <- snn(Type~.,wine,subset=sample(nrow(wine),100),method="glm")
+r1 <- snn(Type~.,wine,subset=sample(nrow(wine),100),method="glm", x=TRUE)
 r1$testTab
 r2 <- snn(Type~.,wine,subset=sample(nrow(wine),100),method="ridge")
 r2$testTab
