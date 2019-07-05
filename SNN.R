@@ -1,7 +1,7 @@
 library(cluster)
 library(glmnet)
 library(StatMatch)
-
+ 
 snn <- function (formula, data, subset=NULL, weights, na.action, x = FALSE, y = FALSE, ...)
 {
   ret.x <- x
