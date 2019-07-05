@@ -2,27 +2,24 @@ library(cluster)
 library(glmnet)
 library(StatMatch)
 
-snn <- function (formula, data, subset=NULL, weights, na.action, x = FALSE, y = FALSE,
-                contrasts = NULL, ...)
+snn <- function (formula, data, subset=NULL, weights, na.action, x = FALSE, y = FALSE, ...)
 {
   ret.x <- x
   ret.y <- y
-  cl <- match.call()
   mf <- match.call(expand.dots = FALSE)
-  m <- match(c("formula", "data", "subset", "weights", "na.action"), names(mf), 0L)
+  m <- match(c("formula", "data", "subset", "na.action"), names(mf), 0L)
   mf <- mf[c(1L, m)]
   mf$drop.unused.levels <- TRUE
   ## need stats:: for non-standard evaluation
   mf[[1L]] <- quote(stats::model.frame)
   mf <- eval(mf, parent.frame())
-  mt <- attr(mf, "terms") # allow model.frame to update it
-
   
-  if (is.empty.model(mt)) {
+  if (is.empty.model(mf)) {
     stop("Empty model not supported")
   }
   y <- model.response(mf)
-  x <- model.matrix(mt, mf, contrasts)
+  # x <- model.frame(mt, mf)
+  x <- data.frame(mf[,-1])
   print(nrow(x))
   z <-  snn.fit(x, y, ...)
   
@@ -30,10 +27,8 @@ snn <- function (formula, data, subset=NULL, weights, na.action, x = FALSE, y = 
   
   class(z) <- c("snn")
   z$na.action <- attr(mf, "na.action")
-  z$contrasts <- attr(x, "contrasts")
-  z$xlevels <- .getXlevels(mt, mf)
-  z$call <- cl
-  z$terms <- mt
+  z$call <- match.call()
+  z$mf <- mf
   if (ret.x) z$x <- x
   if (ret.y) z$y <- y
   z$formula <- formula
@@ -231,7 +226,9 @@ summary.snn <- function (object, correlation = FALSE, symbolic.cor = FALSE, ...)
 
 predict.snn = function(object, newdata,type=c("response","prob")){
 
-  x <- model.matrix(object$formula,newdata)
+  mf <- model.frame(object$formula,newdata)
+  x <- mf[,-1]
+  y <- model.response(mf)
   dataset.gower = gower.dist(x, data.y=object$medoids)
   dataset.sim <- data.frame(1-as.matrix(dataset.gower))
   colnames(dataset.sim) = paste('X', row.names(object$medoids), sep="")
