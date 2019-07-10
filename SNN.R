@@ -1,6 +1,7 @@
 library(cluster)
 library(glmnet)
 library(StatMatch)
+library(nnet)
  
 snn <- function (formula, data, subset=NULL, weights, na.action, x = FALSE, y = FALSE, ...)
 {
@@ -95,16 +96,6 @@ snn.fit <- function (x, y, method="glm", classical=FALSE, simil.types=list(),...
   if(is.factor(y) || is.logical(y)){
     model <- snn.createClassificationModel(dataframe, method=method)
   }
-  if(is.factor(y) && nlevels(y)>2){
-    model <- list()
-    for(i in 1:nlevels(y)){ 
-      dataframe$Target = as.factor(y==levels(y)[i])
-      model[[i]] <- snn.createClassificationModel(dataframe, method=method)
-    }
-  }
-  else if(is.logical(y) || (is.factor(y) && nlevels(y)==2)){
-    model <- snn.createClassificationModel(dataframe, method=method)
-  }
   else if(is.numeric(y)){
     model <- snn.createRegressionModel(dataframe, method=method)
   }
@@ -134,13 +125,18 @@ snn.createClassificationModel <- function(dataframe,method="glm"){
   else if(is.factor(y) && nlevels(y)>2)
     family.type <- "multinomial"
   
-  if(method=="glm"){
+  if(method=="glm" && family.type == "binomial"){
     cat("[Classification] Creating glm model...\n")
-    model <- glm (Target~., data=dataframe, family=family.type)
+    model <- glm (Target~., data=dataframe, family="binomial")
     model <- step(model, trace=0)
   }
+  else if(method=="glm" && family.type == "multinomial"){
+    cat("[Classification] Creating glm model...\n")
+    model <- multinom (Target~., data=dataframe)
+
+  }
   else if(method=="ridge" || method=="lasso"){
-    cat("[Classification] Creating glmnet model...\n")
+    cat("[Classification] Creating multinom model...\n")
     x <- as.matrix(dataframe[,-which(names(dataframe) %in% c("Target"))])
     y <- dataframe$Target
     alpha <- ifelse(method=="lasso", 1, 0)
@@ -149,6 +145,7 @@ snn.createClassificationModel <- function(dataframe,method="glm"){
   }
   else
     stop(gettextf("Classification method '%s' is not supported. Choose: glm, ridge, lasso", method))
+  print('out')
   model
   
 }
@@ -254,13 +251,10 @@ predict.snn = function(object, newdata,type=c("response","prob")){
     response[test.prob>=0.5]<-TRUE
   }
   else if(object$outputType == "factor"){
-    nLevels <- length(object$outputLevels)
-    prob = matrix(0,3,nrow(dataset.sim))
-    for(i in 1:nLevels){ 
-      prob[i,] <-  predict (object$model[[i]], dataset.sim, type="response")
-    }
-    response <- apply(prob,2,function(p) object$outputLevels[which.max(p)[1]])
-    test.prob <- apply(prob,2,function(p) max(p))
+    if(any(class(object$model) == "multinom")) prob <-  predict (object$model, dataset.sim, type="probs")
+    else prob <-  predict (object$model, dataset.sim, type="response")
+    response <- apply(prob,1,function(p) object$outputLevels[which.max(p)[1]])
+    test.prob <- apply(prob,1,function(p) max(p))
   }
   else if(object$outputType=="numeric"){
     response <- predict (object$model, dataset.sim, type="response")

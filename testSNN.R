@@ -23,7 +23,7 @@ r2$testTab
 r3 <- snn(Type~.,wine,subset=sample(nrow(wine),100),method="lasso")
 r3$testTab
 
-r4 <- snn(Type~.,wine,subset=sample(nrow(wine),100),method="glm", clust.method = "Uniform")
+r4 <- snn(Type~.,wine,subset=sample(nrow(wine),100),method="glm", clust.method = "Random")
 r4$testTab
 
 response = predict(r1,wine,c("response","prob"))
