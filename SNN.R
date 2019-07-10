@@ -92,6 +92,9 @@ snn.fit <- function (x, y, method="glm", classical=FALSE, simil.types=list(),...
   
   dataframe <- data.frame(learn.data[,clusters.idxs], Target=y)  
   
+  if(is.factor(y) || is.logical(y)){
+    model <- snn.createClassificationModel(dataframe, method=method)
+  }
   if(is.factor(y) && nlevels(y)>2){
     model <- list()
     for(i in 1:nlevels(y)){ 
@@ -125,9 +128,15 @@ snn.fit <- function (x, y, method="glm", classical=FALSE, simil.types=list(),...
 }
 
 snn.createClassificationModel <- function(dataframe,method="glm"){
+  y <- model.response(model.frame(Type~.,wine))
+  if(is.logical(y) || (is.factor(y) && nlevels(y)==2))
+    family.type <- "binomial"
+  else if(is.factor(y) && nlevels(y)>2)
+    family.type <- "multinomial"
+  
   if(method=="glm"){
     cat("[Classification] Creating glm model...\n")
-    model <- glm (Target~., data=dataframe, family=binomial())
+    model <- glm (Target~., data=dataframe, family=family.type)
     model <- step(model, trace=0)
   }
   else if(method=="ridge" || method=="lasso"){
@@ -135,8 +144,8 @@ snn.createClassificationModel <- function(dataframe,method="glm"){
     x <- as.matrix(dataframe[,-which(names(dataframe) %in% c("Target"))])
     y <- dataframe$Target
     alpha <- ifelse(method=="lasso", 1, 0)
-    cv.result <- cv.glmnet(x,y,nfolds = 10,family = "binomial", alpha=alpha)
-    model <- glmnet(x,y,family="binomial", lambda=cv.result$lambda.1se[1], alpha=alpha)
+    cv.result <- cv.glmnet(x,y,nfolds = 10,family = family.type, alpha=alpha)
+    model <- glmnet(x,y,family=family.type, lambda=cv.result$lambda.1se[1], alpha=alpha)
   }
   else
     stop(gettextf("Classification method '%s' is not supported. Choose: glm, ridge, lasso", method))
@@ -186,7 +195,7 @@ snn.findclusters <- function(x,         #Dataset
 # Method to find the number of clusters
 # hp <- Estimation of the proportion of clusters.
 # nclust.method <- method to decide the number of clusters
-snn.numberOfClusters <- function(N, hp=1, nclust.method='C'){
+snn.numberOfClusters <- function(N, hp=0.1, nclust.method='C'){
 
   if(nclust.method=="U"|| nclust.method=="Uniform"){
     cat("[Num of clusters method]: Uniform")
