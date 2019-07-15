@@ -1,6 +1,5 @@
 library(cluster)
 library(glmnet)
-library(StatMatch)
 library(nnet)
  
 snn <- function (formula, data, subset=NULL, weights, na.action, x = FALSE, y = FALSE, ...)
@@ -21,7 +20,7 @@ snn <- function (formula, data, subset=NULL, weights, na.action, x = FALSE, y = 
   y <- model.response(mf)
   # x <- model.frame(mt, mf)
   x <- data.frame(mf[,-1])
-  print(nrow(x))
+  
   z <-  snn.fit(x, y, ...)
   
   # predict test data
@@ -37,6 +36,7 @@ snn <- function (formula, data, subset=NULL, weights, na.action, x = FALSE, y = 
   #Predict test data
   if(!is.null(subset) && length(subset)<nrow(data)){
     cat('Predicting test data\n')
+    
     test.y <- model.response(model.frame(formula,data=data[-subset,]))
     
     if(is.logical(y)|| is.factor(y)){
@@ -47,12 +47,12 @@ snn <- function (formula, data, subset=NULL, weights, na.action, x = FALSE, y = 
       tab <- table(Truth=test.y,Pred=pred$response)
       z$testError <- 1-sum(tab[row(tab)==col(tab)])/sum(tab)
       z$testAccuracy <- 100*(1- z$testError)
-      z$testTab <- tab
+      z$testContingencyTable <- tab
     }
     else if(is.numeric(y)){
       z$testResponse <- predict (z, newdata=data[-subset,], type="response")
       z$testReal <- test.y
-      z$mse <- sum((z$testResponse - test.y)^2)
+      z$mse <- sum((z$testResponse - test.y)^2)/length(test.y)
       z$nmse <- z$mse/((length(test.y)-1)*var(test.y))
     }
     else {
@@ -64,18 +64,13 @@ snn <- function (formula, data, subset=NULL, weights, na.action, x = FALSE, y = 
 }
 
 
-snn.fit <- function (x, y, method="glm", classical=FALSE, simil.types=list(),...)
+snn.fit <- function (x, y, method="glm", classical=FALSE, simil.types=list(),p=1,...)
 {
-  if (is.null(n <- nrow(x))) stop("'x' must be a matrix")
-  if(n == 0L) stop("0 (non-NA) cases")
+  if (is.null(n <- nrow(x))) stop("'x' must be a dataframe")
+  if (n == 0L) stop("0 (non-NA) cases")
   p <- ncol(x)
   if (p == 0L) stop("Null model")
   ny <- NCOL(y)
-  ## treat one-col matrix as vector
-  if(is.matrix(y) && ny == 1)
-    y <- drop(y)
-  if (NROW(y) != n)
-    stop("incompatible dimensions")
   
   chkDots(...)
   
@@ -83,13 +78,14 @@ snn.fit <- function (x, y, method="glm", classical=FALSE, simil.types=list(),...
     learn.data <- x
   else { 
     x.daisy <- daisy(x, metric="gower", type = simil.types)
-    x.simils <- data.frame(1-as.matrix(x.daisy))
-    learn.data <- x.simils
+    x.simils <- 1-as.matrix(x.daisy)
+    x.simils <- apply(x.simils, c(1,2), function(x) f_p(x,p))
+    learn.data <- data.frame(x.simils)
   }
   
   clusters.idxs <- snn.findclusters(learn.data,...)
   
-  medoids <- x[clusters.idxs,]
+  prototypes <- x[clusters.idxs,]
   
   dataframe <- data.frame(learn.data[,clusters.idxs], Target=y)  
   
@@ -99,15 +95,14 @@ snn.fit <- function (x, y, method="glm", classical=FALSE, simil.types=list(),...
   else if(is.numeric(y)){
     model <- snn.createRegressionModel(dataframe, method=method)
   }
-  else {
-    stop("Output type not supported")
-  }
+  else stop("Output type not supported")
   
-  z <- list()
+  z <- list() # Output
   z$model <- model
-  z$medoids <- medoids
-  z$nMedoids <- length(clusters.idxs)
+  z$prototypes <- prototypes
   z$classical <- classical
+  z$simil.types <- simil.types
+  z$p <- p
   if (!classical)
     z$sim <- learn.data
   z$outputType <- class(y)
@@ -119,18 +114,18 @@ snn.fit <- function (x, y, method="glm", classical=FALSE, simil.types=list(),...
 }
 
 snn.createClassificationModel <- function(dataframe,method="glm"){
-  y <- model.response(model.frame(Type~.,wine))
+  y <- model.response(model.frame(Target~.,dataframe))
   if(is.logical(y) || (is.factor(y) && nlevels(y)==2))
     family.type <- "binomial"
   else if(is.factor(y) && nlevels(y)>2)
     family.type <- "multinomial"
-  
+  print(family.type)
   if(method=="glm" && family.type == "binomial"){
     cat("[Classification] Creating glm model...\n")
     model <- glm (Target~., data=dataframe, family="binomial")
     model <- step(model, trace=0)
   }
-  else if(method=="glm" && family.type == "multinomial"){
+  else if(method=="multinom" && family.type == "multinomial"){
     cat("[Classification] Creating glm model...\n")
     model <- multinom (Target~., data=dataframe)
 
@@ -144,7 +139,7 @@ snn.createClassificationModel <- function(dataframe,method="glm"){
     model <- glmnet(x,y,family=family.type, lambda=cv.result$lambda.1se[1], alpha=alpha)
   }
   else
-    stop(gettextf("Classification method '%s' is not supported. Choose: glm, ridge, lasso", method))
+    stop(gettextf("Classification method '%s' is not supported. Choose: glm, multinom, ridge, lasso", method))
   print('out')
   model
   
@@ -235,29 +230,42 @@ predict.snn = function(object, newdata,type=c("response","prob")){
   mf <- model.frame(object$formula,newdata)
   x <- mf[,-1]
   y <- model.response(mf)
-  dataset.gower = gower.dist(x, data.y=object$medoids)
-  dataset.sim <- data.frame(1-as.matrix(dataset.gower))
-  colnames(dataset.sim) = paste('X', row.names(object$medoids), sep="")
+  
+  if (object$classical)  
+    test.x <- x
+  else { 
+    compute.daisy <- function(newX, prototypes){
+      tmp <- rbind(newX, prototypes)
+      daisy.dist <- daisy(tmp, metric="gower", type = object$simil.types)
+      as.matrix(daisy.dist)[1,-1]
+    }
+    
+    x.daisy <- t(apply(x, 1, function(row) compute.daisy(row, object$prototypes)))
+    x.simils <- 1-as.matrix(x.daisy)
+    x.simils <- apply(x.simils, c(1,2), function(x) f_p(x,object$p))
+    test.x <- data.frame(x.simils)
+    colnames(test.x) = paste('X', row.names(object$prototypes), sep="")
+  }
   
   if(object$method=="ridge" || object$method=="lasso") # Glmnet does not support data frame
-    dataset.sim  <- as.matrix(dataset.sim)
-  
+    test.x  <- as.matrix(test.x)
   
   #Predict by type
   if(object$outputType == "logical"){
-    test.prob <- predict (object$model, dataset.sim, type="response")
-    response <-NULL
-    response[test.prob<0.5]<-FALSE
-    response[test.prob>=0.5]<-TRUE
+    test.prob <- predict (object$model, test.x, type="response")
+    response <- test.prob>=0.5
   }
   else if(object$outputType == "factor"){
-    if(any(class(object$model) == "multinom")) prob <-  predict (object$model, dataset.sim, type="probs")
-    else prob <-  predict (object$model, dataset.sim, type="response")
+    if(any(class(object$model) == "multinom")) 
+      prob <-  predict (object$model, test.x, type="probs")
+    else 
+      prob <-  predict (object$model, test.x, type="response")
+    
     response <- apply(prob,1,function(p) object$outputLevels[which.max(p)[1]])
     test.prob <- apply(prob,1,function(p) max(p))
   }
   else if(object$outputType=="numeric"){
-    response <- predict (object$model, dataset.sim, type="response")
+    response <- predict (object$model, test.x, type="response")
   }
   else
     stop("[Predicting] Output type not supported")
@@ -276,4 +284,22 @@ predict.snn = function(object, newdata,type=c("response","prob")){
 }
 
 
+f_p <- function(x,p){
+  a <- function(p) (-0.5+sqrt(0.5^2+4*p))/2
+  if(x<=0.5){
+    value <- -p/((x-0.5)-a(p)) -a(p)
+  }
+  else{
+    value <- -p/((x-0.5)+a(p)) +a(p)+1
+  }
+  value
+}
 
+plot.fp <- function(values,p){
+  r <- lapply(values, function(v) f_p(v,p))
+  plot(values,r, type="l")
+}
+plot.fp(seq(0,1,0.01),0.001)
+plot.fp(seq(0,1,0.01),0.01)
+plot.fp(seq(0,1,0.01),0.1)
+plot.fp(seq(0,1,0.01),1)
