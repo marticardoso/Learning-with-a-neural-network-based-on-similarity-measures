@@ -80,7 +80,7 @@ optimize_p_step1 <- function(simils, y, p, ...){
     model <- snn.createClassificationModel(learn.data, trace=FALSE,...)
   }
   else if(is.numeric(y)){
-    model <- snn.createRegressionModel(learn.data, ...)
+    model <- snn.createRegressionModel(learn.data, trace=FALSE, ...)
   }
   return(model)
 }
@@ -95,7 +95,7 @@ optimize_p_step2 <- function(simils, t, model, pInitial = 0.1){
   res <- optim(pInitial, func, grad, method = "BFGS")
 }
 
-optimize_p_cv <- function(simils, t, ps = NULL){
+optimize_p_test_values <- function(simils, t, ps = NULL){
   if(is.null(ps)) ps = seq(0.01,1,0.01)
   
   E.res <- sapply(ps, function(p) {
@@ -103,7 +103,10 @@ optimize_p_cv <- function(simils, t, ps = NULL){
     E.val <- E.func(p, simils,t, model)
     return(E.val)
   })
-  
-  ps[which.min(E.res)[1]]
+  z <- list()
+  z$bestP <- ps[which.min(E.res)[1]]
+  z$ps <- ps
+  z$ps.E <- E.res
+  z
 }
 

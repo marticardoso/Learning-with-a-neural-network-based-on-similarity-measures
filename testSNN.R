@@ -16,7 +16,7 @@ library(mlbench)
 #First we load some useful function for the model selection task
 source('SNN.R')
 
-r1 <- snn(Type~.,wine,subset=sample(nrow(wine),100),method="multinom", x=TRUE, p=0.2)
+r1 <- snn(Type~.,wine,subset=sample(nrow(wine),100),method="multinom", x=TRUE, p=0.2, hp=0.02)
 r1$testContingencyTable
 r2 <- snn(Type~.,wine,subset=sample(nrow(wine),100),method="ridge")
 r2$testContingencyTable

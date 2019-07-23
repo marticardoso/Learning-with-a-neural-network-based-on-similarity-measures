@@ -88,8 +88,6 @@ r5 <- snn(lpsa~.,prostate,subset=s, method="lm", clust.method="PAM", p= res$best
 r5$nrmse
 
 
-func(0.1,res$simils, res$model, res$y)
-
 tmp.E <- function(p) {
   if(p<=0) return(NA)
   snn.res <- predict(res$model, data.frame(apply(res$simils, c(1,2), function(x) fp(x,p))))
@@ -138,4 +136,7 @@ abline(v=ps[which.min(E.ps)[1]], col="blue")
 
 
 # Test several values
-(cv.bestP <- optimize_p_cv(res$simils,res$y))
+results <- optimize_p_test_values(res$simils,res$y)
+plot(results$ps,results$ps.E, type='l')
+abline(v=results$ps[which.min(results$ps.E)], col="blue")
+

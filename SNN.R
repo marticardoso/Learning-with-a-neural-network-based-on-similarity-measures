@@ -145,7 +145,6 @@ snn.createClassificationModel <- function(dataframe,method="glm",..., trace=TRUE
 }
 
 snn.createRegressionModel <- function(dataframe,method="lm",..., trace=TRUE){
-  
   if(method=="lm"){
     if(trace) cat("[Regression] Creating lm model...\n")
     model <- lm (Target~., data=dataframe)
