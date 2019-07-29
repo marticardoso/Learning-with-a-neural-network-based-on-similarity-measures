@@ -16,7 +16,7 @@ library(mlbench)
 #First we load some useful function for the model selection task
 source('SNN.R')
 
-r1 <- snn(Type~.,wine,subset=sample(nrow(wine),100),method="multinom", x=TRUE, p=0.2, hp=0.02)
+r1 <- snn(Type~.,wine,subset=sample(nrow(wine),100),method="multinom", x=TRUE, p=0.2, hp=0.1)
 r1$testContingencyTable
 r2 <- snn(Type~.,wine,subset=sample(nrow(wine),100),method="ridge")
 r2$testContingencyTable
@@ -88,7 +88,7 @@ reg.lm <- snn(medv~.,BostonHousing,subset=s, method="lm", hp= 0.1, x=TRUE, y=TRU
 reg.lm$mse
 reg.lm$nrmse
 
-reg.ridge <- snn(medv~.,BostonHousing,subset=s, method="ridge", hp=0.8, x=TRUE, y=TRUE)
+reg.ridge <- snn(medv~.,BostonHousing,subset=s, method="ridge", hp=0.05, x=TRUE, y=TRUE)
 reg.ridge$testReal
 reg.ridge$testResponse-reg.ridge$testReal
 reg.ridge$mse
@@ -143,3 +143,4 @@ simil.types <- list(ordratio = c("Pregnancies", "Age"))
 pima2.glm <- snn(Target~.,pima,subset=learn, method="glm", simil.types=simil.types, hp=0.04)
 pima2.glm$testContingencyTable
 pima2.glm$testAccuracy
+

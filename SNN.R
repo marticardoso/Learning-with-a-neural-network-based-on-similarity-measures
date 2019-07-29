@@ -45,7 +45,6 @@ snn <- function (formula, data, subset=NULL, x = TRUE, y = TRUE, ..., trace=TRUE
       pred <- predict (z, newdata=data[-subset,], type=c("response","prob"))
       z$testResponse <- pred$response
       z$testProb <- pred$prob
-      pred <<- pred
       tab <- table(Truth=test.y,Pred=pred$response)
       z$testError <- 1-sum(diag(tab))/sum(tab)
       z$testAccuracy <- 100*(1- z$testError)
@@ -75,14 +74,15 @@ snn.fit <- function (x, y, method="glm", classical=FALSE, simil.types=list(),p=0
   else { 
     x.daisy <- daisy(x, metric="gower", type = simil.types)
     x.simils <- 1 - as.matrix(x.daisy)
-    clust.data <- data.frame(x.simils)
+    clust.data <- x.daisy
   }
-  clusters.idxs <- snn.findclusters(clust.data,hp=hp,...)
+  findclusters.res <- snn.findclusters(clust.data,hp=hp,...)
+  id.medoid <- findclusters.res$id.med
   
-  prototypes <- x[clusters.idxs,]
+  prototypes <- x[id.medoid,]
   
-  if(classical) learn.data <- x[,clusters.idxs]
-  else learn.data <- data.frame(apply(x.simils[,clusters.idxs], c(1,2), function(x) fp(x,p)))
+  if(classical) learn.data <- x[,id.medoid]
+  else learn.data <- data.frame(apply(x.simils[,id.medoid], c(1,2), function(x) fp(x,p)))
   
   learn.data$Target <- y
   
@@ -98,8 +98,6 @@ snn.fit <- function (x, y, method="glm", classical=FALSE, simil.types=list(),p=0
   z$classical <- classical
   z$simil.types <- simil.types
   z$p <- p
-  if (!classical)
-    z$sim <- clust.data
   z$outputType <- class(y)
   if(class(y)=="factor")
     z$outputLevels <- levels(y)
@@ -107,9 +105,13 @@ snn.fit <- function (x, y, method="glm", classical=FALSE, simil.types=list(),p=0
   z$method <- method
   #Debug info
   if(debug){
-    z$x.simils <- x.simils
     z$clust.data <- clust.data
     z$learn.data <- learn.data
+    z$dissim <- x.daisy
+    z$dissim.matrix <- as.matrix(x.daisy)
+    z$simil.matrix <- x.simils
+    z$simil.matrix.prot <- x.simils[,id.medoid]
+    z$findclusters.res <- findclusters.res
   }
   z
 }
@@ -169,17 +171,17 @@ snn.findclusters <- function(clust.data,         #Dataset
                              clust.metric="euclidean", # (PAM)
                              clust.stand=FALSE,        # (PAM)
                              ..., trace=TRUE){
-  N <- nrow(clust.data)
+  N <- nrow(as.matrix(clust.data))
   M <- snn.numberOfClusters(N, ...)
   
   if(clust.method=="PAM"){
     if(trace) cat("[Clustering] PAM...\n")
-    dataset.pam <- pam (clust.data, k=M, metric = clust.metric, stand=clust.stand, keep.diss=FALSE, keep.data=FALSE)
-    return(dataset.pam$id.med)  
+    dataset.pam <- pam (clust.data, k=M, metric = clust.metric, stand=clust.stand, diss=TRUE, keep.diss=FALSE, keep.data=FALSE)
+    return(dataset.pam)  
   }
   else if(clust.method=="R" || clust.method=="Random"){
     if(trace) cat("[Clustering] Random\n")
-    return(sample(1:N,M))
+    return(list(id.med=sample(1:N,M)))
   }
   else 
     stop(gettextf("Clustering method '%s' is not supported. Supported methods: PAM and Random.", clust.method))
