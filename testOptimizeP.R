@@ -17,21 +17,31 @@ source('fp_utils.R')
 # Plot fp
 plot.fp <- function(values,p){
   r <- sapply(values, function(v) fp(v,p))
-  plot(values,r, type="l")
+  plot(values,r, type="l", main= paste('fp (p=',p,')'))
 }
 
-par(mfrow=c(2, 2))
-plot.fp(seq(0,1,0.01),0.001)
-plot.fp(seq(0,1,0.01),0.01)
-plot.fp(seq(0,1,0.01),0.1)
-plot.fp(seq(0,1,0.01),1)
+par(mfrow=c(2, 3))
+xs <- seq(0,1,0.01)
+plot.fp(xs,0.001)
+plot.fp(xs,0.01)
+plot.fp(xs,0.1)
+plot.fp(xs,1)
+plot.fp(xs,10)
+plot.fp(xs,100)
+
+par(mfrow=c(1, 1))
+plot(xs,sapply(xs, function(v) fp(v,0.001)), type="l")
+lines(xs,sapply(xs, function(v) fp(v,0.01)), type="l", col='red')
+lines(xs,sapply(xs, function(v) fp(v,0.1)), type="l", col='blue')
+lines(xs,sapply(xs, function(v) fp(v,1)), type="l", col='orange')
+lines(xs,sapply(xs, function(v) fp(v,10)), type="l", col='cyan')
 
 # Plot dfp
 plot.dfp <- function(values,p){
   r <- sapply(values, function(v) dfp(v,p))
   plot(values,r, type="l", main='dfp')
 }
-
+par(mfrow=c(2, 2))
 plot.dfp(seq(0,1,0.01),0.001)
 plot.dfp(seq(0,1,0.01),0.01)
 plot.dfp(seq(0,1,0.01),0.1)
@@ -69,37 +79,20 @@ plot.aAndDa <- function(values){
 }
 plot.aAndDa(seq(0,10,0.01))
 
-
+graphics.off()
 
 # Numeric output
 set.seed(1234)
 s <- sample(nrow(prostate),60)
-r5 <- snn(lpsa~.,prostate,subset=s, method="lm", x=TRUE, y=TRUE)
-r5$testReal
-r5$testResponse-r5$testReal
-r5$mse
-r5$nrmse
+snn.res <- snn(lpsa~.,prostate,subset=s, method="lm", x=TRUE, y=TRUE)
+snn.res$mse
+snn.res$nrmse
 
 # Optimization of p
-set.seed(1234)
-res <- optimize_p(r5$x, r5$y, clust.method= "PAM")
+res <- optimize_p(snn.res$simil.matrix.prot, snn.res$y, clust.method= "PAM")
 
-r5 <- snn(lpsa~.,prostate,subset=s, method="lm", clust.method="PAM", p= res$bestP, x=TRUE, y=TRUE)
-r5$nrmse
-
-
-tmp.E <- function(p) {
-  if(p<=0) return(NA)
-  snn.res <- predict(res$model, data.frame(apply(res$simils, c(1,2), function(x) fp(x,p))))
-  return(sum((res$t - snn.res)^2)/length(res$t))
-}
-
-tmp.dE <- function(p) {
-  if(p<=0) return(NA)
-  snn.res <- predict(res$model, data.frame(apply(res$simils, c(1,2), function(x) fp(x,p))))
-  dsnn.res <- predict(res$model, data.frame(apply(res$simils, c(1,2), function(x) dfp(x,p))))
-  return(2*sum((res$t - snn.res)*dsnn.res))
-}
+snn.res <- snn(lpsa~.,prostate,subset=s, method="lm", clust.method="PAM", p= res$bestP, x=TRUE, y=TRUE)
+snn.res$nrmse
 
 ps <- seq(0,10,0.01)
 E.ps <- sapply(ps, function(p) E.func(p,res$simils, res$y, res$model) )
@@ -108,10 +101,10 @@ plot(ps,E.ps, type='l')
 plot(ps,dE.ps, type='l')
 which.min(E.ps)
 
-(res2 <- optimize_p_step2(res$simils, res$y, res$model, pInitial=0.1))
+(res2 <- optimize_p_given_model(res$simils, res$y, res$model, pInitial=0.1))
 
 # Test p=0.2
-m1.res <- optimize_p(r5$x, r5$y, clust.method= "PAM", pInitial=0.2)
+m1.res <- optimize_p(snn.res$simil.matrix.prot, snn.res$y, clust.method= "PAM", pInitial=0.2)
 ps <- seq(0.01,3,0.01)
 E.ps <- sapply(ps, function(p) E.func(p,m1.res$simils, m1.res$y, m1.res$model) )
 plot(ps,E.ps, type='l')
@@ -119,24 +112,55 @@ plot(ps,E.ps, type='l')
 dE.ps <- sapply(ps, function(p) dE.func(p,m1.res$simils, m1.res$y, m1.res$model) )
 plot(ps[50:200],dE.ps[50:200], type='l')
 abline(h=0, col="red")
-abline(v=0.2, col="red")
 abline(v=ps[which.min(E.ps)[1]], col="blue")
 
 
 # Test p=0.1
-m2.res <- optimize_p(r5$x, r5$y, clust.method= "PAM", pInitial=0.1)
+m2.res <- optimize_p(snn.res$simil.matrix.prot, snn.res$y, clust.method= "PAM", pInitial=0.01)
 E.ps <- sapply(ps, function(p) E.func(p,m2.res$simils, m2.res$y, m2.res$model) )
 plot(ps,E.ps, type='l')
 
 dE.ps <- sapply(ps, function(p) dE.func(p,m2.res$simils, m2.res$y, m2.res$model) )
-plot(ps,dE.ps, type='l')
+plot(ps[1:200],dE.ps[1:200], type='l')
 abline(h=0, col="red")
 abline(v=ps[which.min(E.ps)[1]], col="blue")
 
 
+# Test Ridge
+m3.res <- optimize_p(snn.res$simil.matrix.prot, snn.res$y, method="ridge", clust.method= "PAM", pInitial=0.5)
+E.ps <- sapply(ps, function(p) E.func(p,m3.res$simils, m3.res$y, m3.res$model) )
+plot(ps,E.ps, type='l')
+
+dE.ps <- sapply(ps, function(p) dE.func(p,m3.res$simils, m3.res$y, m3.res$model) )
+plot(ps[10:200],dE.ps[10:200], type='l')
+abline(h=0, col="red")
+abline(v=ps[which.min(E.ps)[1]], col="blue")
+
+# BostonHousing example
+
+set.seed(1234)
+s <- sample(nrow(BostonHousing),400)
+boss.res <- snn(medv~.,BostonHousing,subset=s, method="lm", x=TRUE, y=TRUE)
+boss.res$mse
+boss.res$nrmse
+
+boss.opt <- optimize_p(boss.res$simil.matrix.prot, boss.res$y, clust.method= "PAM", pInitial=0.2, maxIter=3)
+ps <- seq(0.01,3,0.01)
+E.ps <- sapply(ps, function(p) E.func(p,boss.opt$simils, boss.opt$y, boss.opt$model) )
+plot(ps[1:300],E.ps[1:300], type='l')
+dE.ps <- sapply(ps, function(p) dE.func(p,boss.opt$simils, boss.opt$y, boss.opt$model) )
+plot(ps[1:300],dE.ps[1:300], type='l')
+abline(h=0, col="red")
+abline(v=ps[which.min(E.ps)[1]], col="blue")
 
 # Test several values
-results <- optimize_p_test_values(res$simils,res$y)
+results <- optimize_p_test_range_of_values(snn.res$simil.matrix.prot,res$y,seq(0.01,3,0.01))
 plot(results$ps,results$ps.E, type='l')
 abline(v=results$ps[which.min(results$ps.E)], col="blue")
 
+
+# Greedy approaches
+v3.results <- optimize_p_method3(snn.res$dissim.matrix,snn.res$findclusters.res)
+barplot(v3.results$results)
+abline(h=v3.results$avg, col="blue")
+v3.results$avg
