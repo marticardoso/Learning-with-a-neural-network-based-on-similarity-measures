@@ -62,7 +62,7 @@ snn <- function (formula, data, subset=NULL, x = TRUE, y = TRUE, ..., trace=TRUE
 }
 
 
-snn.fit <- function (x, y, method="glm", classical=FALSE, simil.types=list(),p=0.1,hp=0.1,..., trace=TRUE)
+snn.fit <- function (x, y, method="glm", simil.types=list(),p=0.1,hp=0.1,..., trace=TRUE)
 {
   if (is.null(n <- nrow(x))) stop("'x' must be a dataframe")
   p <- ncol(x)
@@ -70,19 +70,17 @@ snn.fit <- function (x, y, method="glm", classical=FALSE, simil.types=list(),p=0
   ny <- NCOL(y)
   
   
-  if (classical) clust.data <- x
-  else { 
-    x.daisy <- daisy(x, metric="gower", type = simil.types)
-    x.simils <- 1 - as.matrix(x.daisy)
-    clust.data <- x.daisy
-  }
+  
+  x.daisy <- daisy(x, metric="gower", type = simil.types)
+  x.simils <- 1 - as.matrix(x.daisy)
+  clust.data <- x.daisy
+  
   findclusters.res <- snn.findclusters(clust.data,hp=hp,...)
   id.medoid <- findclusters.res$id.med
   
   prototypes <- x[id.medoid,]
   
-  if(classical) learn.data <- x[,id.medoid]
-  else learn.data <- data.frame(apply(x.simils[,id.medoid], c(1,2), function(x) fp(x,p)))
+  learn.data <- data.frame(apply(x.simils[,id.medoid], c(1,2), function(x) fp(x,p)))
   
   learn.data$Target <- y
   
@@ -95,7 +93,6 @@ snn.fit <- function (x, y, method="glm", classical=FALSE, simil.types=list(),p=0
   z <- list() # Output
   z$model <- model
   z$prototypes <- prototypes
-  z$classical <- classical
   z$simil.types <- simil.types
   z$p <- p
   z$outputType <- class(y)
@@ -231,27 +228,25 @@ predict.snn = function(object, newdata,type=c("response","prob")){
   x <- mf[,-1]
   y <- model.response(mf) 
   
-  if (object$classical)  
-    test.x <- x
-  else { 
-    #compute.daisy <- function(newX, prototypes){
-    #  tmp <- rbind(newX, prototypes)
-    #  daisy.dist <- daisy(tmp, metric="gower", type = object$simil.types)
-    #  r <<-as.matrix(daisy.dist)[1,-1]
-      
-    #  r
-    #}
-    #x.daisy <- sapply(1:nrow(x), function(row) compute.daisy(x[row,],object$prototypes))
-    #x.daisy <- data.frame(x.daisy)
-    
-    x.daisy <- daisy(rbind(x,object$prototypes), metric="gower", type = object$simil.types)
-    x.simils <- 1-as.matrix(x.daisy)
-    x.simils <- x.simils[1:nrow(x), (nrow(x)+1):nrow(x.simils)]
-    test.x <- data.frame(apply(x.simils, c(1,2), function(x) fp(x,object$p)))
-    colnames(test.x) = paste('X', row.names(object$prototypes), sep="")
-  }
   
-  if(object$method=="ridge" || object$method=="lasso") # Glmnet does not support data frame
+  #compute.daisy <- function(newX, prototypes){
+  #  tmp <- rbind(newX, prototypes)
+  #  daisy.dist <- daisy(tmp, metric="gower", type = object$simil.types)
+  #  r <<-as.matrix(daisy.dist)[1,-1]
+    
+  #  r
+  #}
+  #x.daisy <- sapply(1:nrow(x), function(row) compute.daisy(x[row,],object$prototypes))
+  #x.daisy <- data.frame(x.daisy)
+  
+  x.daisy <- daisy(rbind(x,object$prototypes), metric="gower", type = object$simil.types)
+  x.simils <- 1-as.matrix(x.daisy)
+  x.simils <- x.simils[1:nrow(x), (nrow(x)+1):nrow(x.simils)]
+  test.x <- data.frame(apply(x.simils, c(1,2), function(x) fp(x,object$p)))
+  colnames(test.x) = paste('X', row.names(object$prototypes), sep="")
+  
+  
+  if(any(class(object$method)=="glmnet")) # Glmnet does not support data frame
     test.x  <- as.matrix(test.x)
   
   #Predict by type
