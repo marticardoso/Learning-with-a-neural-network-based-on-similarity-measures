@@ -1,3 +1,4 @@
+# Adding multinomial 
 library(e1071)
 
 a <- function(p) -1/4+sqrt((1/2)^4 + p)
@@ -13,72 +14,30 @@ dfp <- function(x,p){
   else       return((-((x-0.5) + a(p)) + p*da(p)) / (x-0.5+a(p))^2 + da(p))
 }
 
-# E function (error) = t - snn(x)
-E.func <- function(p, simils, t, model) {
-  if(p<=0) return(NA)
-  
-  w <- coef(model)  #Extract w
-  if(any(class(model)=="glmnet")) w <- w[,1]
-  w0 <- w["(Intercept)"]                         #Intercept
-  w <- w[-which(names(w) %in% c("(Intercept)"))] # Remove intercept
-  names(w) <- gsub('X','',names(w))              # Remove X from names
-  
-  snn.res <- apply(simils[,names(w)], c(1,2), function(x) fp(x,p))
-  snn.res <- snn.res %*% w
-  snn.res <- snn.res + w0
-  res <-(sum((t - snn.res)^2)/length(t))
-  #cat('Pval: ', p, ' - optVal= ', res, '\n')
-  return(res)
-}
 
-dE.func <- function(p, simils, t, model) {
-  if(p<=0) return(NA)
-  
-  w <- coef(model)  #Extract w
-  if(any(class(model)=="glmnet")) w <- w[,1]
-  w0 <- w["(Intercept)"]                         #Intercept
-  w <- w[-which(names(w) %in% c("(Intercept)"))] # Remove intercept
-  names(w) <- gsub('X','',names(w))              # Remove X from names
-  
-  #snn.res <- predict(model, data.frame(apply(simils, c(1,2), function(x) fp(x,p))))
-  #dsnn.res <- predict(model, data.frame(apply(simils, c(1,2), function(x) dfp(x,p))))
-  
-  snn.res <- apply(simils[,names(w)], c(1,2), function(x) fp(x,p))
-  snn.res <- snn.res %*% w
-  snn.res <- snn.res + w0
- 
-  dsnn.res <- apply(simils[,names(w)], c(1,2), function(x) dfp(x,p))
-  dsnn.res <- dsnn.res %*% w # No intercept
-  
-  res <- -(2/length(t) * sum((t - snn.res)*dsnn.res))
-  
-  return(res)
-}
-##############
-# Multinom E #
-##############
+
+
 E.multinom <- function(p, simils, t, model){
-  if(p<=0) return(NA)
+  
   w <- coef(model)  #Extract w
   colnames(w) <- gsub('X','',colnames(w)) # Remove X from names
   
   prototypes <- colnames(w)[-which(colnames(w) %in% c("(Intercept)"))]
   
-  X <- apply(simils[,prototypes], c(1,2), function(x) fp(x,p))
-  X <- cbind(1, X)
-  snn.res <- X %*% t(w)
+  snn.res <- apply(simils[,prototypes], c(1,2), function(x) fp(x,p))
+  snn.res <- cbind(1, snn.res)
+  snn.res <- snn.res %*% t(w)
   snn.res <- cbind(0,snn.res)
   
   nnetRes <- t(apply(snn.res, 1, function(r) exp(r)/sum(exp(r))))
   
   real <- class.ind(t)
   
-  res <- sum((nnetRes -real)^2)/(length(t))
-  return(res)
+  res <- sum((nnetRes -real)^2)/(length(t)*3)
 }
 
 dE.multinom <- function(p, simils, t, model){
-  if(p<=0) return(NA)
+  
   w <- coef(model)  #Extract w
   colnames(w) <- gsub('X','',colnames(w)) # Remove X from names
   prototypes <- colnames(w)[-which(colnames(w) %in% c("(Intercept)"))]
@@ -110,19 +69,16 @@ dE.multinom <- function(p, simils, t, model){
   
   real <- class.ind(t)
   
-  res <- -2/(length(t)) * sum((real-snnRes) *dnnetRes)
-  return(res)
+  res <- -sum((real-snnRes) *dnnetRes)/(length(t)*3)
 }
 
-##############
-# Optimize p #
-##############
-optimize_p <- function(x.simils,y, pInitial= 0.5,maxIter=100, toler=1e-10,...){
+
+optimize_p <- function(x.simils,y, pInitial= 0.5,maxIter=100, toler=1e-5,...){
   cat('Optimization of p - pInitial = ', pInitial, '\n')
   bestP <- pInitial
   iter = 1
   while (iter < maxIter){
-    model <- optimize_p_create_model_given_p(x.simils, y, bestP,...)
+    model <<- optimize_p_create_model_given_p(x.simils, y, bestP,...)
     optRes <- optimize_p_given_model(x.simils, y, model, bestP)
     newP <- optRes$par
     cat('Iter ', iter, ' - p = ', newP, '(opt value:',optRes$value,')\n')
@@ -171,11 +127,10 @@ optimize_p_given_model <- function(simils, t, model, pInitial = 0.1){
     #Gradient
     grad <- function(p) dE.func(p, simils, t, model)
   }
+  
+  
   res <- optim(pInitial, func, grad, method = "BFGS")
-  print(res)
-  res
 }
-
 
 # Try a range of p, and return the one with highest value
 optimize_p_test_range_of_values <- function(simils, t, ps = NULL){
@@ -272,4 +227,28 @@ optimize_p_method3 <- function(dissim, pam.res, type="avg", ...){
   names(z$results) <- paste('m', 1:(length(z$results)), sep="")
   z$avg <- mean(z$results)
   z
+}
+
+
+# E function (error) = t - snn(x)
+E.class <- function(p, simils, t, model) {
+  if(p<=0) return(NA)
+  
+  r = predict(model, simils)
+  r==t
+  res <-(sum((r==t))/length(t))
+  #cat('Pval: ', p, ' - optVal= ', res, '\n')
+  return(res)
+}
+
+
+# derivateE function (error) = t - snn(x)
+E.class <- function(p, simils, t, model) {
+  if(p<=0) return(NA)
+  
+  r = predict(model, simils)
+  r==t
+  res <-(sum((r==t))/length(t))
+  #cat('Pval: ', p, ' - optVal= ', res, '\n')
+  return(res)
 }

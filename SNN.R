@@ -69,8 +69,6 @@ snn.fit <- function (x, y, method="glm", simil.types=list(),p=0.1,hp=0.1,..., tr
   if (p == 0L) stop("Null model")
   ny <- NCOL(y)
   
-  
-  
   x.daisy <- daisy(x, metric="gower", type = simil.types)
   x.simils <- 1 - as.matrix(x.daisy)
   clust.data <- x.daisy
@@ -123,7 +121,7 @@ snn.createClassificationModel <- function(dataframe,method="glm",..., trace=TRUE
   if(method=="glm" && family.type == "binomial"){
     if(trace) cat("[Classification] Creating glm model...\n")
     model <- glm (Target~., data=dataframe, family="binomial",...)
-    model <- step(model, trace=0)
+    #model <- step(model, trace=0)
   }
   else if(method=="multinom" && family.type == "multinomial"){
     if(trace) cat("[Classification] Creating multinom model...\n")
@@ -147,7 +145,7 @@ snn.createRegressionModel <- function(dataframe,method="lm",..., trace=TRUE){
   if(method=="lm"){
     if(trace) cat("[Regression] Creating lm model...\n")
     model <- lm (Target~., data=dataframe)
-    model <- step(model, trace=0)
+    #model <- step(model, trace=0)
   }
   else if(method=="ridge" || method=="lasso"){
     if(trace) cat("[Regression] Creating ridge/lasso regression model...\n")
@@ -246,7 +244,8 @@ predict.snn = function(object, newdata,type=c("response","prob")){
   colnames(test.x) = paste('X', row.names(object$prototypes), sep="")
   
   
-  if(any(class(object$method)=="glmnet")) # Glmnet does not support data frame
+  if(object$method=="ridge" ||object$method=="lasso" || 
+     any(class(object$method)=="glmnet")) # Glmnet does not support data frame
     test.x  <- as.matrix(test.x)
   
   #Predict by type
