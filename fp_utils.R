@@ -72,7 +72,7 @@ E.multinom <- function(p, simils, t, model){
   #nnetRes <- snn.res 
   nnetRes <- t(apply(X, 1, function(r) exp(r)/sum(exp(r))))
   real <- class.ind(t)
-  return(sum((real-nnetRes)^2) +pCoef*p)
+  return(sum((real-nnetRes)^2))
 }
 
 dE.multinom <- function(p, simils, t, model){
@@ -102,7 +102,7 @@ dE.multinom <- function(p, simils, t, model){
   
   
   real <- class.ind(t)
-  return(-2*sum((real-nnetRes)*dnnetRes) + pCoef)
+  return(-2*sum((real-nnetRes)*dnnetRes))
 }
 
 ##############
@@ -163,7 +163,7 @@ optimize_p_given_model <- function(simils, t, model, pInitial = 0.1){
     grad <- function(p) dE.func(p, simils, t, model)
   }
   res <- optim(pInitial, func, grad, method = "BFGS")
-  print(res)
+  #print(res)
   res
 }
 

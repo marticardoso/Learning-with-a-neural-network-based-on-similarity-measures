@@ -189,127 +189,18 @@ snn.res$testContingencyTable
 res <- optimize_p(snn.res$simil.matrix.prot, snn.res$y, method="multinom", pInitial=0.4)
 par(mfrow=c(2, 1))
 
-ps <- seq(0.39,0.42,0.01)
+ps <- seq(0.3,0.33,0.001)
 ini <- 1
 end <- length(ps)
-E.ps <- sapply(ps, function(p) E.multinom(p,gSimils, gT, gModel) )
+E.ps <- sapply(ps, function(p) E.multinom(p,res$simils, res$y, res$model) )
 plot(ps[ini:end],E.ps[ini:end], type='l')
-dE.ps <- sapply(ps, function(p) dE.multinom(p,gSimils, gT, gModel) )
+dE.ps <- sapply(ps, function(p) dE.multinom(p,res$simils, res$y, res$model) )
 plot(ps[ini:end],dE.ps[ini:end], type='l')
 abline(h=0, col="red")
 abline(v=ps[which.min(E.ps)[1]], col="blue")
 
 
 
-#DELETE
 
-E.multinom <- function(p, simils, t, model){
-  if(p<=0) return(NA)
-  w <- coef(model)  #Extract w
-  colnames(w) <- gsub('X','',colnames(w)) # Remove X from names
-  
-  prototypes <- colnames(w)[-which(colnames(w) %in% c("(Intercept)"))]
-  
-  X <- apply(simils[,prototypes], c(1,2), function(x) fp(x,p))
-  X <- cbind(1, X)
-  snn.res <- X %*% t(w)
-  snn.res <- cbind(0,snn.res)
-  nnetRes <- snn.res 
-  nnetRes <- t(apply(snn.res, 1, function(r) r/sum(r)))
-  
-  real <- class.ind(t)
-  
-  res <- sum((nnetRes -real)^2)/(length(t))
-  return(res)
-}
-
-dE.multinom <- function(p, simils, t, model){
-  if(p<=0) return(NA)
-  w <- coef(model)  #Extract w
-  colnames(w) <- gsub('X','',colnames(w)) # Remove X from names
-  prototypes <- colnames(w)[-which(colnames(w) %in% c("(Intercept)"))]
-  
-  X <- apply(simils[,prototypes], c(1,2), function(x) fp(x,p))
-  X <- cbind(1, X) # Add intercept column
-  nnetRes <- X %*% t(w) # w has intercept
-  nnetRes <- cbind(0,nnetRes) # Added base class
-  
-  snnRes <- t(apply(nnetRes, 1, function(r) exp(r)))#/sum(exp(r))))
-  
-  
-  w0 <- w[,"(Intercept)"]                         #Intercept
-  w <- w[,-which(colnames(w) %in% c("(Intercept)"))] # Remove intercept
-  
-  X <- apply(simils[,prototypes], c(1,2), function(x) dfp(x,p))
-  dnnet <- X %*% t(w) # No intercept
-  dnnet <- cbind(0,dnnet) # First class has 0 derivative
-  
-  dnnetRes <- dnnet
-  for(i in 1:nrow(dnnetRes)){
-    rowExpSum <- sum(snnRes[i,])
-    dRowExpSum <- sum(dnnet[i,])
-    for(j in 1:ncol(dnnetRes)){
-      dnnetRes[i,j] <- dnnet[i,j]*rowExpSum - snnRes[i,j]*dRowExpSum
-      dnnetRes[i,j] <- dnnetRes[i,j]/rowExpSum^2
-    }
-  }
-  
-  real <- class.ind(t)
-  
-  res <- -2/(length(t)) * sum((real-snnRes) *dnnetRes)
-  return(res)
-}
-
-gId <- 1:60
-pCoef <- 0
-cols <- c(1,2)
-E.multinom <- function(p, simils, t, model){
-  if(p<=0) return(NA)
-  w <- coef(model)  #Extract w
-  colnames(w) <- gsub('X','',colnames(w)) # Remove X from names
-  
-  prototypes <- colnames(w)[-which(colnames(w) %in% c("(Intercept)"))]
-  
-  
-  X <- apply(simils[,prototypes], c(1,2), function(x) fp(x,p))
-  X <- cbind(1, X)
-  X <- X %*% t(w)
-  X <- cbind(0,X)
-  #nnetRes <- snn.res 
-  nnetRes <- t(apply(X, 1, function(r) exp(r)/sum(exp(r))))
-  real <- class.ind(t)
-  return(sum((real-nnetRes)^2) +pCoef*p)
-}
-
-
-dE.multinom <- function(p, simils, t, model){
-  if(p<=0) return(NA)
-  
-  w <- coef(model)  #Extract w
-  colnames(w) <- gsub('X','',colnames(w)) # Remove X from names
-  prototypes <- colnames(w)[-which(colnames(w) %in% c("(Intercept)"))]
-  
-  
-  X <- apply(simils[,prototypes], c(1,2), function(x) fp(x,p))
-  X <- cbind(1, X)
-  X <- X %*% t(w)
-  X <- cbind(0,X)
-  
-  dX <- apply(simils[,prototypes], c(1,2), function(x) dfp(x,p))
-  wNoInter <- w[,-which(colnames(w) %in% c("(Intercept)"))] # Remove intercept
-  dX <- dX %*% t(wNoInter)
-  dX <- cbind(0,dX)
- 
-  nnetRes <- t(apply(X, 1, function(r) exp(r)/sum(exp(r))))
-
-  dnnetRes <- matrix(0,dim(nnetRes)[1], dim(nnetRes)[2])
-  for(i in 1:nrow(dnnetRes)){
-    dnnetRes[i,] <- (sum(exp(X[i,]))*exp(X[i,])*dX[i,]-exp(X[i,])*sum(exp(X[i,])*dX[i,]))/(sum(exp(X[i,])))^2
-  }
-  
- 
-  real <- class.ind(t)
-  return(-2*sum((real-nnetRes)*dnnetRes) + pCoef)
-}
 
 
