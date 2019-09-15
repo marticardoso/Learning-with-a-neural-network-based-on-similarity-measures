@@ -64,54 +64,45 @@ E.multinom <- function(p, simils, t, model){
   
   prototypes <- colnames(w)[-which(colnames(w) %in% c("(Intercept)"))]
   
+  
   X <- apply(simils[,prototypes], c(1,2), function(x) fp(x,p))
   X <- cbind(1, X)
-  snn.res <- X %*% t(w)
-  snn.res <- cbind(0,snn.res)
-  
-  nnetRes <- t(apply(snn.res, 1, function(r) exp(r)/sum(exp(r))))
-  
+  X <- X %*% t(w)
+  X <- cbind(0,X)
+  #nnetRes <- snn.res 
+  nnetRes <- t(apply(X, 1, function(r) exp(r)/sum(exp(r))))
   real <- class.ind(t)
-  
-  res <- sum((nnetRes -real)^2)/(length(t))
-  return(res)
+  return(sum((real-nnetRes)^2) +pCoef*p)
 }
 
 dE.multinom <- function(p, simils, t, model){
   if(p<=0) return(NA)
+  
   w <- coef(model)  #Extract w
   colnames(w) <- gsub('X','',colnames(w)) # Remove X from names
   prototypes <- colnames(w)[-which(colnames(w) %in% c("(Intercept)"))]
   
+  
   X <- apply(simils[,prototypes], c(1,2), function(x) fp(x,p))
   X <- cbind(1, X) # Add intercept column
-  nnetRes <- X %*% t(w) # w has intercept
-  nnetRes <- cbind(0,nnetRes) # Added base class
+  X <- X %*% t(w) #  w has intercept
+  X <- cbind(0,X) # Added base class
   
-  snnRes <- t(apply(nnetRes, 1, function(r) exp(r)/sum(exp(r))))
+  dX <- apply(simils[,prototypes], c(1,2), function(x) dfp(x,p))
+  wNoInter <- w[,-which(colnames(w) %in% c("(Intercept)"))] # Remove intercept
+  dX <- dX %*% t(wNoInter) # No intercpet
+  dX <- cbind(0,dX) # First class has 0 derivative
   
+  nnetRes <- t(apply(X, 1, function(r) exp(r)/sum(exp(r))))
   
-  w0 <- w[,"(Intercept)"]                         #Intercept
-  w <- w[,-which(colnames(w) %in% c("(Intercept)"))] # Remove intercept
-  
-  X <- apply(simils[,prototypes], c(1,2), function(x) dfp(x,p))
-  dnnet <- X %*% t(w) # No intercept
-  dnnet <- cbind(0,dnnet) # First class has 0 derivative
-  
-  dnnetRes <- dnnet
+  dnnetRes <- matrix(0,dim(nnetRes)[1], dim(nnetRes)[2])
   for(i in 1:nrow(dnnetRes)){
-    rowExpSum <- sum(exp(snnRes[i,]))
-    dRowExpSum <- sum(exp(snnRes[i,])*dnnet[i,])
-    for(j in 1:ncol(dnnetRes)){
-      dnnetRes[i,j] <- exp(snnRes[i,j])*dnnet[i,j]*rowExpSum - exp(snnRes[i,j])*dRowExpSum
-      dnnetRes[i,j] <- dnnetRes[i,j]/rowExpSum^2
-    }
+    dnnetRes[i,] <- (sum(exp(X[i,]))*exp(X[i,])*dX[i,]-exp(X[i,])*sum(exp(X[i,])*dX[i,]))/(sum(exp(X[i,])))^2
   }
   
-  real <- class.ind(t)
   
-  res <- -2/(length(t)) * sum((real-snnRes) *dnnetRes)
-  return(res)
+  real <- class.ind(t)
+  return(-2*sum((real-nnetRes)*dnnetRes) + pCoef)
 }
 
 ##############
