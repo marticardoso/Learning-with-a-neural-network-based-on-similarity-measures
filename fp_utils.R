@@ -13,7 +13,7 @@ dfp <- function(x,p){
   else       return((-((x-0.5) + a(p)) + p*da(p)) / (x-0.5+a(p))^2 + da(p))
 }
 
-# E function (error) = t - snn(x)
+# E function (error) for regression= t - snn(x)
 E.func <- function(p, simils, t, model) {
   if(p<=0) return(NA)
   
@@ -99,8 +99,7 @@ dE.multinom <- function(p, simils, t, model){
   for(i in 1:nrow(dnnetRes)){
     dnnetRes[i,] <- (sum(exp(X[i,]))*exp(X[i,])*dX[i,]-exp(X[i,])*sum(exp(X[i,])*dX[i,]))/(sum(exp(X[i,])))^2
   }
-  
-  
+
   real <- class.ind(t)
   return(-2*sum((real-nnetRes)*dnnetRes))
 }

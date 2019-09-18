@@ -147,12 +147,12 @@ abline(v=ps[which.min(E.ps)[1]], col="blue")
 set.seed(1234)
 data(BostonHousing)
 s <- sample(nrow(BostonHousing),400)
-boss.res <- snn(medv~.,BostonHousing,subset=s, method="lm", x=TRUE, y=TRUE)
+boss.res <- snn(medv~.,BostonHousing,subset=s, method="lm", hp=0.05, x=TRUE, y=TRUE)
 boss.res$mse
 boss.res$nrmse
 
 #Run optimization
-boss.opt <- optimize_p(boss.res$simil.matrix.prot, boss.res$y)
+boss.opt <- optimize_p(boss.res$simil.matrix.prot, boss.res$y, hp=0.04)
 ps <- seq(0.01,3,0.01)
 E.ps <- sapply(ps, function(p) E.func(p,boss.opt$simils, boss.opt$y, boss.opt$model) )
 plot(ps[1:300],E.ps[1:300], type='l')
@@ -186,10 +186,10 @@ snn.res$testContingencyTable
 
 
 # Run optimization of p (given the snn result)
-res <- optimize_p(snn.res$simil.matrix.prot, snn.res$y, method="multinom", pInitial=0.4)
+res <- optimize_p(snn.res$simil.matrix.prot, snn.res$y, method="multinom", pInitial=1)
 par(mfrow=c(2, 1))
 
-ps <- seq(0.3,0.33,0.001)
+ps <- seq(0.6,0.7,0.001)
 ini <- 1
 end <- length(ps)
 E.ps <- sapply(ps, function(p) E.multinom(p,res$simils, res$y, res$model) )
