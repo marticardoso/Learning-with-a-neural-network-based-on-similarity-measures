@@ -186,21 +186,48 @@ snn.res$testContingencyTable
 
 
 # Run optimization of p (given the snn result)
-res <- optimize_p(snn.res$simil.matrix.prot, snn.res$y, method="multinom", pInitial=1)
+res <- optimize_p(snn.res$simil.matrix.prot, snn.res$y, method="multinom", pInitial=0.1)
 par(mfrow=c(2, 1))
 
-ps <- seq(0.6,0.7,0.001)
+ps <- seq(0.1,0.11,0.0001)
 ini <- 1
 end <- length(ps)
-E.ps <- sapply(ps, function(p) E.multinom(p,res$simils, res$y, res$model) )
+E.ps <- sapply(ps, function(p) E.multinomial(p,res$simils, res$y, res$model) )
 plot(ps[ini:end],E.ps[ini:end], type='l')
-dE.ps <- sapply(ps, function(p) dE.multinom(p,res$simils, res$y, res$model) )
+dE.ps <- sapply(ps, function(p) dE.multinomial(p,res$simils, res$y, res$model) )
 plot(ps[ini:end],dE.ps[ini:end], type='l')
 abline(h=0, col="red")
-abline(v=ps[which.min(E.ps)[1]], col="blue")
+abline(v=ps[which.min(E.ps)[1]], col="blue",lwd=2)
+opt <- optimize_p_given_model(res$simils, res$y, res$model, res$bestP)
+abline(v=opt$par, col="red")
 
 
+## Binomial case ##
 
+# The following lines are used to obtain the similarity matrix that will be used in the optimization
+set.seed(1234)
+s <- sample(nrow(wine),60)
+wine2 <- wine
+wine2$Type <- wine2$Type == 1
+snn.res <- snn(Type~.,wine2,subset=s, method="glm", x=TRUE, y=TRUE)
+snn.res$testContingencyTable
+
+
+res <- optimize_p(snn.res$simil.matrix.prot, snn.res$y, method="glm", pInitial=0.2)
+
+par(mfrow=c(2, 1))
+
+ps <- seq(0.19,0.21,0.001)
+ini <- 1
+end <- length(ps)
+E.ps <- sapply(ps, function(p) E.binomial(p,res$simils, res$y, res$model) )
+plot(ps[ini:end],E.ps[ini:end], type='l')
+dE.ps <- sapply(ps, function(p) dE.binomial(p,res$simils, res$y, res$model) )
+plot(ps[ini:end],dE.ps[ini:end], type='l')
+abline(h=0, col="red")
+abline(v=ps[which.min(E.ps)[1]], col="blue",lwd=2)
+opt <- optimize_p_given_model(res$simils, res$y, res$model, res$bestP)
+abline(v=opt$par, col="red")
 
 
 

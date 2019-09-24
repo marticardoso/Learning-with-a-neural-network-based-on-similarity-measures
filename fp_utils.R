@@ -13,8 +13,42 @@ dfp <- function(x,p){
   else       return((-((x-0.5) + a(p)) + p*da(p)) / (x-0.5+a(p))^2 + da(p))
 }
 
-# E function (error) for regression= t - snn(x)
 E.func <- function(p, simils, t, model) {
+  if(is.logical(t))
+    return(E.binomial(p,simils,t,model))
+  
+  else if(is.factor(t))
+    return(E.multinomial(p,simils,t,model))
+  
+  else if(is.numeric(t))
+    return(E.regression(p,simils,t,model))
+  
+  else 
+    stop(gettextf("E func ('%s') is not supported.", class(t)))
+}
+
+dE.func <- function(p, simils, t, model) {
+  if(is.logical(t))
+    return(dE.binomial(p,simils,t,model))
+  
+  else if(is.factor(t))
+    return(dE.multinomial(p,simils,t,model))
+  
+  else if(is.numeric(t))
+    return(dE.regression(p,simils,t,model))
+  
+  else 
+    stop(gettextf("dE func ('%s') is not supported.", class(t)))
+}
+
+
+
+################
+# Regression E #
+################
+
+# E function (error) for regression= t - snn(x)
+E.regression <- function(p, simils, t, model) {
   if(p<=0) return(NA)
   
   w <- coef(model)  #Extract w
@@ -31,7 +65,7 @@ E.func <- function(p, simils, t, model) {
   return(res)
 }
 
-dE.func <- function(p, simils, t, model) {
+dE.regression <- function(p, simils, t, model) {
   if(p<=0) return(NA)
   
   w <- coef(model)  #Extract w
@@ -54,10 +88,58 @@ dE.func <- function(p, simils, t, model) {
   
   return(res)
 }
+
+##############
+# Binomial E #
+##############
+
+
+E.binomial <- function(p, simils, t, model){
+  if(p<=0) return(NA)
+  
+  w <- coef(model)  #Extract w
+  names(w) <- gsub('X','',names(w)) # Remove X from names
+  prototypes <- names(w)[-which(names(w) %in% c("(Intercept)"))]
+  
+  X <- apply(simils[,prototypes], c(1,2), function(x) fp(x,p))
+  X <- cbind(1, X) %*% w
+  nnRes <- sigmoid(X)
+  
+  z = class.ind(t) * ln(cbind(1-nnRes, nnRes))
+  return(-sum(z))
+}
+
+dE.binomial <- function(p, simils, t, model){
+  if(p<=0) return(NA)
+  
+  w <- coef(model)  #Extract w
+  names(w) <- gsub('X','',names(w)) # Remove X from names
+  prototypes <- names(w)[-which(names(w) %in% c("(Intercept)"))]
+  # Compute net result
+  X <- apply(simils[,prototypes], c(1,2), function(x) fp(x,p))
+  X <- cbind(1, X) %*% w #  w has intercept
+  nnRes <- sigmoid(X)
+  # Compute net derivative
+  dX <- apply(simils[,prototypes], c(1,2), function(x) dfp(x,p))
+  wNoInter <- w[-which(names(w) %in% c("(Intercept)"))] # Remove intercept
+  dX <- dX %*% wNoInter # No intercpet
+  dnnRes <- dsigmoid(X) * dX
+  
+  z <- class.ind(t) * cbind(-dnnRes/(1-nnRes), dnnRes/nnRes) #z <- t*dnnRes/nnRes - (1-t)*dnnRes/(1-nnRes)
+  
+  z[(1-nnRes)==0,1] <- 0
+  z[nnRes == 1,  2] <- 0
+  #Fix NaN
+  #z[is.nan(z)] <- 0
+  
+  return(-sum(z))
+}
+
 ##############
 # Multinom E #
 ##############
-E.multinom <- function(p, simils, t, model){
+
+E.multinomial <- function(p, simils, t, model){
   if(p<=0) return(NA)
   w <- coef(model)  #Extract w
   colnames(w) <- gsub('X','',colnames(w)) # Remove X from names
@@ -71,11 +153,23 @@ E.multinom <- function(p, simils, t, model){
   X <- cbind(0,X)
   #nnetRes <- snn.res 
   nnetRes <- t(apply(X, 1, function(r) exp(r)/sum(exp(r))))
-  real <- class.ind(t)
-  return(sum((real-nnetRes)^2))
+  
+  z<-class.ind(t)*apply(nnetRes,c(1,2),function(r)ln(r))
+  return(-sum(z))
 }
 
-dE.multinom <- function(p, simils, t, model){
+ln <- function(v){
+  z <- v
+  if(is.matrix(v)){
+    z[v!=0] <- log(v[v!=0])
+  }
+  else if(is.numeric(v) && v!=0){
+    z <- log(v)
+  }
+  z
+}
+
+dE.multinomial <- function(p, simils, t, model){
   if(p<=0) return(NA)
   
   w <- coef(model)  #Extract w
@@ -99,23 +193,24 @@ dE.multinom <- function(p, simils, t, model){
   for(i in 1:nrow(dnnetRes)){
     dnnetRes[i,] <- (sum(exp(X[i,]))*exp(X[i,])*dX[i,]-exp(X[i,])*sum(exp(X[i,])*dX[i,]))/(sum(exp(X[i,])))^2
   }
-
-  real <- class.ind(t)
-  return(-2*sum((real-nnetRes)*dnnetRes))
+  
+  z <- -class.ind(t)*dnnetRes/nnetRes
+  return(sum(z))
 }
 
 ##############
 # Optimize p #
 ##############
-optimize_p <- function(x.simils,y, pInitial= 0.5,maxIter=100, toler=1e-10,...){
+optimize_p <- function(x.simils,y, pInitial= 0.5,maxIter=100, toler=1e-5,...){
   cat('Optimization of p - pInitial = ', pInitial, '\n')
   bestP <- pInitial
   iter = 1
   while (iter < maxIter){
     model <- optimize_p_create_model_given_p(x.simils, y, bestP,...)
+    cat('Iter ', iter, ' (1) p = ', bestP, '(opt value:',E.func(bestP, x.simils, y, model), ', nnet:', tmpGetObjFunc(model),')\n')
     optRes <- optimize_p_given_model(x.simils, y, model, bestP)
     newP <- optRes$par
-    cat('Iter ', iter, ' - p = ', newP, '(opt value:',optRes$value,')\n')
+    cat('Iter ', iter, ' (2) p = ', newP, '(opt value:',E.func(newP, x.simils, y, model), ', opt:', optRes$value,')\n')
     if(abs(bestP-newP) < toler){
       break;
     }
@@ -129,6 +224,15 @@ optimize_p <- function(x.simils,y, pInitial= 0.5,maxIter=100, toler=1e-10,...){
   z$y <- y
   z
   
+}
+tmpGetObjFunc <- function(model){
+  if(class(model)[1]=="glm"){
+    return(model$deviance/2)
+  }
+  if(class(model)[1]=="multinom"){
+    return(model$value)
+  }
+  return(0)
 }
 
 # Step 1 of method 1:
@@ -149,19 +253,12 @@ optimize_p_create_model_given_p <- function(simils, y, p, ...){
 # Function that given a model/w vector, optimize the p value
 optimize_p_given_model <- function(simils, t, model, pInitial = 0.1){
   
-  if(is.factor(t) || is.logical(t)){
-    #Function to optimize
-    func <- function(p) E.multinom(p, simils, t, model)
-    #Gradient
-    grad <- function(p) dE.multinom(p, simils, t, model)
-  }
-  else if(is.numeric(t)){
-    #Function to optimize
-    func <- function(p) E.func(p, simils, t, model)
-    #Gradient
-    grad <- function(p) dE.func(p, simils, t, model)
-  }
-  res <- optim(pInitial, func, grad, method = "BFGS")
+  #Function to optimize
+  func <- function(p) E.func(p, simils, t, model)
+  #Gradient
+  grad <- function(p) dE.func(p, simils, t, model)
+  
+  res <- optim(pInitial, func, grad, method = "BFGS",control = list(abstol = 1e-50, reltol = 1e-50,fnscale=1e-10))
   #print(res)
   res
 }

@@ -120,12 +120,12 @@ snn.createClassificationModel <- function(dataframe,method="glm",..., trace=TRUE
 
   if(method=="glm" && family.type == "binomial"){
     if(trace) cat("[Classification] Creating glm model...\n")
-    model <- glm (Target~., data=dataframe, family="binomial",...)
+    model <- glm (Target~., data=dataframe, family="binomial",control = list(maxit = 100),...)
     #model <- step(model, trace=0)
   }
   else if(method=="multinom" && family.type == "multinomial"){
     if(trace) cat("[Classification] Creating multinom model...\n")
-    model <- multinom (Target~., data=dataframe,trace=FALSE,...)
+    model <- multinom (Target~., data=dataframe,trace=FALSE,maxit=500,abstol=1e-6,...)
   }
   else if(method=="ridge" || method=="lasso"){
     if(trace) cat("[Classification] Creating ridge/lasso model...\n")

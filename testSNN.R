@@ -90,13 +90,13 @@ reg.lm$nrmse
 
 reg.ridge <- snn(medv~.,BostonHousing,subset=s, method="ridge", hp=0.05, x=TRUE, y=TRUE)
 reg.ridge$testReal
-reg.ridge$testResponse-reg.ridge$testReal
+#reg.ridge$testResponse-reg.ridge$testReal
 reg.ridge$mse
 reg.ridge$nrmse
 
 reg.lasso <- snn(medv~.,BostonHousing,subset=s, method="lasso", x=TRUE, y=TRUE)
 reg.lasso$testReal
-reg.lasso$testResponse-reg.lasso$testReal
+#reg.lasso$testResponse-reg.lasso$testReal
 reg.lasso$mse
 reg.lasso$nrmse
 
