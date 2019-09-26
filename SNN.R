@@ -3,7 +3,8 @@ library(glmnet)
 library(nnet)
  
 source("fp_utils.R")
-
+source("daisy/daisy2.R")
+source("daisy/daisy2Predict.R")
 debug=TRUE
 
 snn <- function (formula, data, subset=NULL, x = TRUE, y = TRUE, ..., trace=TRUE )
@@ -69,7 +70,7 @@ snn.fit <- function (x, y, method="glm", simil.types=list(),p=0.1,hp=0.1,..., tr
   if (p == 0L) stop("Null model")
   ny <- NCOL(y)
   
-  x.daisy <- daisy(x, metric="gower", type = simil.types)
+  x.daisy <- daisy2(x, metric="gower", type = simil.types)
   x.simils <- 1 - as.matrix(x.daisy)
   clust.data <- x.daisy
   
@@ -91,7 +92,7 @@ snn.fit <- function (x, y, method="glm", simil.types=list(),p=0.1,hp=0.1,..., tr
   z <- list() # Output
   z$model <- model
   z$prototypes <- prototypes
-  z$simil.types <- simil.types
+  z$daisyObj <- attr(x.daisy,"daisyObj")
   z$p <- p
   z$outputType <- class(y)
   if(class(y)=="factor")
@@ -237,7 +238,7 @@ predict.snn = function(object, newdata,type=c("response","prob")){
   #x.daisy <- sapply(1:nrow(x), function(row) compute.daisy(x[row,],object$prototypes))
   #x.daisy <- data.frame(x.daisy)
   
-  x.daisy <- daisy(rbind(x,object$prototypes), metric="gower", type = object$simil.types)
+  x.daisy <- daisy2.newObservations(rbind(x,object$prototypes), object$daisyObj)
   x.simils <- 1-as.matrix(x.daisy)
   x.simils <- x.simils[1:nrow(x), (nrow(x)+1):nrow(x.simils)]
   test.x <- data.frame(apply(x.simils, c(1,2), function(x) fp(x,object$p)))
