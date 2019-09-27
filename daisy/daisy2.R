@@ -4,9 +4,8 @@ cl_daisy <-"cldaisy"
 dissiCl <- c("dissimilarity", "dist")
 
 daisy2 <- function(x, metric = c("euclidean", "manhattan", "gower"),
-                            stand = FALSE, type = list(), weights = rep.int(1, p),
-                            warnBin = warnType, warnAsym = warnType, warnConst = warnType,
-                            warnType = TRUE,  colmin = NULL, sx = NULL)
+                            stand = FALSE, type = list(), weights = rep.int(1, p), fixUnbalancedDiss = TRUE,
+                            warnBin = warnType, warnAsym = warnType, warnConst = warnType, warnType = TRUE)
 {
   ## check type of input matrix
   if(length(dx <- dim(x)) != 2 || !(is.data.frame(x) || is.numeric(x)))
@@ -119,14 +118,9 @@ daisy2 <- function(x, metric = c("euclidean", "manhattan", "gower"),
       warning("with mixed variables, metric \"gower\" is used automatically")
     ## FIXME: think of a robust alternative scaling to
     ##        Gower's  (x - min(x)) / (max(x) - min(x))
-    if(is.null(colmin) || is.null(sx)){
-      colR <- apply(x, 2, range, na.rm = TRUE)
-      print("1")
-      colmin <- colR[1, ]
-      print("2")
-      sx <- colR[2, ] - colmin
-      print("3")
-    }
+    colR <- apply(x, 2, range, na.rm = TRUE)
+    colmin <- colR[1, ]
+    sx <- colR[2, ] - colmin
     if(any(sx == 0))
       sx[sx == 0] <- 1
     x <- scale(x, center = colmin, scale = sx)
@@ -175,9 +169,16 @@ daisy2 <- function(x, metric = c("euclidean", "manhattan", "gower"),
   full <- matrix(0, n, n)
   full[!lower.tri(full, diag = TRUE)] <- disv
   disv <- t(full)[lower.tri(full)]
+  
+  #Apply sqrt/squre if dissimilaries are unbalanced
+  applySqrt <- fixUnbalancedDiss && max(disv)<=0.5
+  applySqure <- fixUnbalancedDiss && min(disv)>= 0.5 
+  if(applySqrt) disv <- sqrt(disv)
+  if(applySqure) disv <- disv^2
+  
   ## give warning if some dissimilarities are missimg
-  if(anyNA(disv)) attr(disv, "NA.message") <-
-    "NA-values in the dissimilarity matrix !"
+  if(anyNA(disv)) attr(disv, "NA.message") <- "NA-values in the dissimilarity matrix !"
+  
   ## construct S object -- "dist" methods are *there* !
   class(disv) <- dissiCl # see ./0aaa.R
   attr(disv, "Labels") <- dimnames(x)[[1]]
@@ -198,6 +199,8 @@ daisy2 <- function(x, metric = c("euclidean", "manhattan", "gower"),
   z$jdat <- jdat
   z$p <- p
   z$ordRatioLevels <- ordRatioLevels
+  z$applySqrt <- applySqrt
+  z$applySqure <- applySqure
   attr(disv, "daisyObj") <- z
   
   disv

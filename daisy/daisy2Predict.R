@@ -88,13 +88,17 @@ daisy2.newObservations <- function(x, daisyObj)
   full <- matrix(0, n, n)
   full[!lower.tri(full, diag = TRUE)] <- disv
   disv <- t(full)[lower.tri(full)]
+  
+  if(daisyObj$applySqrt) disv <- sqrt(disv)
+  if(daisyObj$applySqure) disv <- disv^2
+  
   ## give warning if some dissimilarities are missimg
-  if(anyNA(disv)) attr(disv, "NA.message") <-
-    "NA-values in the dissimilarity matrix !"
+  if(anyNA(disv)) attr(disv, "NA.message") <- "NA-values in the dissimilarity matrix !"
   
   ## construct S object -- "dist" methods are *there* !
   class(disv) <- dissiCl 
   attr(disv, "Size") <- n
+  attr(disv, "Metric") <- metric
   
   disv
 }

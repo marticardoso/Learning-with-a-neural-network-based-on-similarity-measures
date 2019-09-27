@@ -74,6 +74,7 @@ snn.fit <- function (x, y, method="glm", simil.types=list(),p=0.1,hp=0.1,..., tr
   x.simils <- 1 - as.matrix(x.daisy)
   clust.data <- x.daisy
   
+  
   findclusters.res <- snn.findclusters(clust.data,hp=hp,...)
   id.medoid <- findclusters.res$id.med
   
