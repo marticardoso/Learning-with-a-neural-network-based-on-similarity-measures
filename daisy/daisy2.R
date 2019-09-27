@@ -64,9 +64,16 @@ daisy2 <- function(x, metric = c("euclidean", "manhattan", "gower"),
   }
   if(length(type)) {
     tT <- type$ ordratio
+    ordRatioLevels <- list()
+    for(colName in names(type2[tT])){
+      ordRatioLevels[[colName]] <- levels(as.ordered(x[, colName]))
+      x[, colName] <- unclass(as.ordered(x[, colName]))
+    }
+    #x[, names(type2[tT])] <- unclass(as.ordered(x[, names(type2[tT])]))
+    
     tL <- type$ logratio
-    x[, names(type2[tT])] <- unclass(as.ordered(x[, names(type2[tT])]))
-    x[, names(type2[tL])] <- log10(		    x[, names(type2[tL])])
+    x[, names(type2[tL])] <- log10(x[, names(type2[tL])])
+    
     type2[tA] <- "A"
     type2[tS] <- "S"
     type2[tT] <- "T" 
@@ -180,16 +187,17 @@ daisy2 <- function(x, metric = c("euclidean", "manhattan", "gower"),
   
   #Return daisy object fields to recompute dissimilarities
   z = list()
-  z$type = type
-  z$weights = weights
-  if(exists("colmin")) z$colmin = colmin
-  if(exists("colmean")) z$colmean = colmean
-  if(exists("sx")) z$sx = sx
-  z$type2 = type2
-  z$stand = stand
-  z$ndyst = ndyst
-  z$jdat = jdat
-  z$p = p
+  z$type <- type
+  z$weights <- weights
+  if(exists("colmin")) z$colmin <- colmin
+  if(exists("colmean")) z$colmean <- colmean
+  if(exists("sx")) z$sx <- sx
+  z$type2 <- type2
+  z$stand <- stand
+  z$ndyst <- ndyst
+  z$jdat <- jdat
+  z$p <- p
+  z$ordRatioLevels <- ordRatioLevels
   attr(disv, "daisyObj") <- z
   
   disv

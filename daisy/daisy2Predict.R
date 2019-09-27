@@ -19,6 +19,7 @@ daisy2.newObservations <- function(x, daisyObj)
   sx <- daisyObj$sx
   type2 <- daisyObj$type2
   stand <- daisyObj$stand
+  ordRatioLevels <- daisyObj$ordRatioLevels
   
   ndyst <- daisyObj$ndyst
   jdat <- daisyObj$jdat
@@ -32,12 +33,19 @@ daisy2.newObservations <- function(x, daisyObj)
     x <- data.matrix(x)
   
   if(length(type)) {
+    #Ordratio
     tT <- type$ordratio
+    for(colName in names(type2[tT])){
+      varLevels <- as.numeric(ordRatioLevels[[colName]])
+      cuts <- c(-Inf, varLevels[-1]-diff(varLevels)/2, Inf)
+      x[, colName] <- cut(x[,colName], breaks=cuts, labels=1:length(varLevels))
+    }
+    #x[, names(type2[tT])] <- unclass(as.ordered(x[, names(type2[tT])]))
+    
+    # Log ratio variables
     tL <- type$logratio
-    x[, names(type2[tT])] <- unclass(as.ordered(x[, names(type2[tT])]))
-    x[, names(type2[tL])] <- log10(		    x[, names(type2[tL])])
+    x[, names(type2[tL])] <- log10( x[, names(type2[tL])])
   }
- 
   ## standardize, if necessary
   if(jdat == 2L) { # All numerical and not gower
     if(stand)

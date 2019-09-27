@@ -67,7 +67,7 @@ pima[,-9] <- scale(pima[,-9])
 # For Gower
 simil.types <- list(ordratio = c("Pregnancies", "Age"))
 
-subDs <- pima[1:10,c(1:2,7:9)]
+subDs <- pima[1:10,]
 d1.Res <- daisy2(subDs, metric="gower", type=simil.types)
 (d1.Matrix <- as.matrix(d1.Res))
 
@@ -80,6 +80,10 @@ d1.Matrix-d2.Matrix
 d3.Res <- daisy2.newObservations(subDs[1:2,], d1.Res) #Sub dataset
 (d3.Matrix <- as.matrix(d3.Res))
 d1.Matrix[1:2,1:2]-d3.Matrix  
+#OK
 
-
+d4.Res <- daisy2.newObservations(pima[1:100,], d1.Res) #Larger dataset
+(d4.Matrix <- as.matrix(d4.Res))
+d1.Matrix-d4.Matrix[1:10,1:10]
+#OK
 
