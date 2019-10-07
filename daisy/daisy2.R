@@ -173,8 +173,14 @@ daisy2 <- function(x, metric = c("euclidean", "manhattan", "gower"),
   #Apply sqrt/squre if dissimilaries are unbalanced
   applySqrt <- fixUnbalancedDiss && max(disv)<=0.5
   applySqure <- fixUnbalancedDiss && min(disv)>= 0.5 
-  if(applySqrt) disv <- sqrt(disv)
-  if(applySqure) disv <- disv^2
+  if(applySqrt) {
+    disv <- sqrt(disv)
+    cat('Applied sqrt correction')
+  }
+  if(applySqure) {
+    disv <- disv^2
+    cat('Applied square correction')
+  }
   
   ## give warning if some dissimilarities are missimg
   if(anyNA(disv)) attr(disv, "NA.message") <- "NA-values in the dissimilarity matrix !"
@@ -198,7 +204,7 @@ daisy2 <- function(x, metric = c("euclidean", "manhattan", "gower"),
   z$ndyst <- ndyst
   z$jdat <- jdat
   z$p <- p
-  z$ordRatioLevels <- ordRatioLevels
+  if(exists("ordRatioLevels")) z$ordRatioLevels <- ordRatioLevels
   z$applySqrt <- applySqrt
   z$applySqure <- applySqure
   attr(disv, "daisyObj") <- z

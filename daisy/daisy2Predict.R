@@ -98,7 +98,7 @@ daisy2.newObservations <- function(x, daisyObj)
   ## construct S object -- "dist" methods are *there* !
   class(disv) <- dissiCl 
   attr(disv, "Size") <- n
-  attr(disv, "Metric") <- metric
+  attr(disv, "Metric") <- daisyObj$metric
   
   disv
 }
