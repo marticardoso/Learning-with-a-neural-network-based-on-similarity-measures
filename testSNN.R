@@ -144,3 +144,88 @@ pima2.glm <- snn(Target~.,pima,subset=learn, method="glm", simil.types=simil.typ
 pima2.glm$testContingencyTable
 pima2.glm$testAccuracy
 
+
+
+####################
+## Other datasets ## (from mlbench)
+####################
+
+
+
+
+# Classification
+
+data(BreastCancer)
+summary(BreastCancer)
+
+BreastCancer$Id <- NULL
+bc.snn <- snn(Class~.,BreastCancer,subset=sample(nrow(BreastCancer),500), method="glm", hp=0.05)
+bc.snn$testContingencyTable
+
+data(DNA)
+summary(DNA)
+
+## GLASS ##
+data(Glass)
+summary(Glass)
+
+glass.snn <- snn(Type~.,Glass,subset=sample(nrow(Glass),150), method="multinom", hp=0.1)
+glass.snn$testContingencyTable
+sum(diag(table(predict(glass.snn,Glass, c("response")), Glass$Type)))
+
+# Check with only multinom
+tmp <- multinom(Type~.,Glass)
+sum(diag(table(predict(tmp,Glass), Glass$Type)))
+
+## ##
+data(HouseVotes84)
+summary(HouseVotes84)
+
+hv84.snn <- snn(Class~.,HouseVotes84,subset=sample(nrow(HouseVotes84),300), method="glm", hp=0.05)
+hv84.snn$testContingencyTable
+
+
+data(Ionosphere)
+summary(Ionosphere)
+
+data(LetterRecognition)
+summary(LetterRecognition)
+
+data(PimaIndiansDiabetes)
+summary(PimaIndiansDiabetes)
+
+data(Satellite)
+summary(Satellite)
+
+data(Shuttle)
+summary(Shuttle)
+
+data(Sonar)
+summary(Sonar)
+
+data(Soybean)
+summary(Soybean)
+
+data(Vehicle)
+summary(Vehicle)
+
+data(Vowel)
+summary(Vowel)
+
+data(Zoo)
+summary(Zoo)
+
+
+#Regression
+
+data(Ozone)
+summary(Ozone)
+
+data(Servo)
+summary(Servo)
+
+
+
+
+
+
