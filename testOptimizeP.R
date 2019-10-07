@@ -99,29 +99,33 @@ snn.res <- snn(lpsa~.,prostate,subset=s, method="lm", clust.method="PAM", p= res
 snn.res$nrmse
 
 # Some plots (E and dE)
-ps <- seq(0,10,0.01)
+par(mfrow=c(2, 1))
+ps <- seq(0.5,1.5,0.01)
 E.ps <- sapply(ps, function(p) E.func(p,res$simils, res$y, res$model) )
 dE.ps <- sapply(ps, function(p) dE.func(p,res$simils, res$y, res$model) )
 plot(ps,E.ps, type='l')
 plot(ps,dE.ps, type='l')
+abline(h=0, col="red")
+abline(v=ps[which.min(E.ps)[1]], col="blue")
 which.min(E.ps)
 
 (res2 <- optimize_p_given_model(res$simils, res$y, res$model, pInitial=0.1))
 
 # Test initial p = 0.2
 m1.res <- optimize_p(snn.res$simil.matrix.prot, snn.res$y, pInitial=0.2)
-ps <- seq(0.01,3,0.01)
+ps <- seq(0.5,2,0.01)
 E.ps <- sapply(ps, function(p) E.func(p,m1.res$simils, m1.res$y, m1.res$model) )
 plot(ps,E.ps, type='l')
 
 dE.ps <- sapply(ps, function(p) dE.func(p,m1.res$simils, m1.res$y, m1.res$model) )
-plot(ps[50:200],dE.ps[50:200], type='l')
+plot(ps,dE.ps, type='l')
 abline(h=0, col="red")
 abline(v=ps[which.min(E.ps)[1]], col="blue")
 
 
 # Test initial p = 0.01
 m2.res <- optimize_p(snn.res$simil.matrix.prot, snn.res$y, pInitial=0.01)
+ps <- seq(0.01,0.4,0.001)
 E.ps <- sapply(ps, function(p) E.func(p,m2.res$simils, m2.res$y, m2.res$model) )
 plot(ps,E.ps, type='l')
 
@@ -132,12 +136,13 @@ abline(v=ps[which.min(E.ps)[1]], col="blue")
 
 
 # Test Ridge
-m3.res <- optimize_p(snn.res$simil.matrix.prot, snn.res$y, method="ridge", pInitial=0.5)
+m3.res <- optimize_p(snn.res$simil.matrix.prot, snn.res$y, method="ridge", pInitial=0.9)
+ps <- seq(0.1,0.4,0.001)
 E.ps <- sapply(ps, function(p) E.func(p,m3.res$simils, m3.res$y, m3.res$model) )
 plot(ps,E.ps, type='l')
 
 dE.ps <- sapply(ps, function(p) dE.func(p,m3.res$simils, m3.res$y, m3.res$model) )
-plot(ps[10:200],dE.ps[10:200], type='l')
+plot(ps,dE.ps, type='l')
 abline(h=0, col="red")
 abline(v=ps[which.min(E.ps)[1]], col="blue")
 
@@ -152,8 +157,8 @@ boss.res$mse
 boss.res$nrmse
 
 #Run optimization
-boss.opt <- optimize_p(boss.res$simil.matrix.prot, boss.res$y, hp=0.04)
-ps <- seq(0.01,3,0.01)
+boss.opt <- optimize_p(boss.res$simil.matrix.prot, boss.res$y, hp=0.04, maxIter = 10)
+ps <- seq(0.5,2,0.01)
 E.ps <- sapply(ps, function(p) E.func(p,boss.opt$simils, boss.opt$y, boss.opt$model) )
 plot(ps[1:300],E.ps[1:300], type='l')
 dE.ps <- sapply(ps, function(p) dE.func(p,boss.opt$simils, boss.opt$y, boss.opt$model) )
@@ -162,10 +167,17 @@ abline(h=0, col="red")
 abline(v=ps[which.min(E.ps)[1]], col="blue")
 
 # Test several values
-results <- optimize_p_test_range_of_values(snn.res$simil.matrix.prot,res$y,seq(0.01,3,0.01))
+results <- optimize_p_test_range_of_values(snn.res$simil.matrix.prot,snn.res$y,seq(0.01,3,0.01))
 plot(results$ps,results$ps.E, type='l')
 abline(v=results$ps[which.min(results$ps.E)], col="blue")
 
+
+#K fold cross valiation
+results <- optimize_p_kFoldCV(snn.res$simil.matrix,colnames(snn.res$simil.matrix.prot), snn.res$y,seq(0.01,2,0.01))
+plot(results$ps,results$ps.E, type='l')
+abline(v=results$ps[which.min(results$ps.E)], col="blue")
+
+results$ps[which(results$ps.E <= min(results$ps.E))]
 
 # Greedy approaches
 v3.results <- optimize_p_method3(snn.res$dissim.matrix,snn.res$findclusters.res)
@@ -189,7 +201,7 @@ snn.res$testContingencyTable
 res <- optimize_p(snn.res$simil.matrix.prot, snn.res$y, method="multinom", pInitial=0.1)
 par(mfrow=c(2, 1))
 
-ps <- seq(0.1,0.11,0.0001)
+ps <- seq(0.07,0.2,0.0001)
 ini <- 1
 end <- length(ps)
 E.ps <- sapply(ps, function(p) E.multinomial(p,res$simils, res$y, res$model) )
@@ -213,11 +225,35 @@ snn.res <- snn(Type~.,wine2,subset=s, method="glm", x=TRUE, y=TRUE)
 snn.res$testContingencyTable
 
 
-res <- optimize_p(snn.res$simil.matrix.prot, snn.res$y, method="glm", pInitial=0.2)
+res <- optimize_p(snn.res$simil.matrix.prot, snn.res$y, method="glm")
 
 par(mfrow=c(2, 1))
 
-ps <- seq(0.19,0.21,0.001)
+ps <- seq(0.19,0.21,0.0001)
+ini <- 1
+end <- length(ps)
+E.ps <- sapply(ps, function(p) E.binomial(p,res$simils, res$y, res$model) )
+plot(ps[ini:end],E.ps[ini:end], type='l')
+dE.ps <- sapply(ps, function(p) dE.binomial(p,res$simils, res$y, res$model) )
+plot(ps[ini:end],dE.ps[ini:end], type='l')
+abline(h=0, col="red")
+abline(v=ps[which.min(E.ps)[1]], col="blue",lwd=2)
+opt <- optimize_p_given_model(res$simils, res$y, res$model, res$bestP)
+abline(v=opt$par, col="red")
+
+# BreastCancer #
+
+data(BreastCancer)
+summary(BreastCancer)
+BreastCancer$Id <- NULL
+set.seed(1)
+s <- sample(nrow(BreastCancer),500)
+bc.snn <- snn(Class~.,BreastCancer,subset=s, method="glm", p = 0.1, hp=0.05)
+bc.snn$testContingencyTable
+
+res <- optimize_p(bc.snn$simil.matrix.prot, bc.snn$y, method="glm", maxIter = 100)
+
+ps <- seq(0.1,0.21,0.001)
 ini <- 1
 end <- length(ps)
 E.ps <- sapply(ps, function(p) E.binomial(p,res$simils, res$y, res$model) )
@@ -230,4 +266,18 @@ opt <- optimize_p_given_model(res$simils, res$y, res$model, res$bestP)
 abline(v=opt$par, col="red")
 
 
+bc.snn <- snn(Class~.,BreastCancer,subset=s, method="ridge", p = 0.1, hp=0.05)
+bc.snn$testContingencyTable
+
+res <- optimize_p(bc.snn$simil.matrix.prot, bc.snn$y, method="ridge", pInitial=0.35)
+
+
+data(Sonar)
+summary(Sonar)
+set.seed(1)
+s <- sample(nrow(Sonar),100)
+bc.snn <- snn(Class~.,Sonar,subset=s, method="glm", p = 0.1, hp=0.1)
+bc.snn$testContingencyTable
+
+res <- optimize_p(bc.snn$simil.matrix.prot, bc.snn$y, method="glm", pInitial=15, maxIter = 100)
 

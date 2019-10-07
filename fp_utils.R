@@ -14,7 +14,7 @@ dfp <- function(x,p){
 }
 
 E.func <- function(p, simils, t, model) {
-  if(is.logical(t))
+  if(is.logical(t) ||(is.factor(t)&&nlevels(t)==2))
     return(E.binomial(p,simils,t,model))
   
   else if(is.factor(t))
@@ -28,7 +28,7 @@ E.func <- function(p, simils, t, model) {
 }
 
 dE.func <- function(p, simils, t, model) {
-  if(is.logical(t))
+  if(is.logical(t)||(is.factor(t)&&nlevels(t)==2))
     return(dE.binomial(p,simils,t,model))
   
   else if(is.factor(t))
@@ -98,6 +98,7 @@ E.binomial <- function(p, simils, t, model){
   if(p<=0) return(NA)
   
   w <- coef(model)  #Extract w
+  if(any(class(model)=="glmnet")) w <- w[,1]
   names(w) <- gsub('X','',names(w)) # Remove X from names
   prototypes <- names(w)[-which(names(w) %in% c("(Intercept)"))]
   
@@ -113,6 +114,7 @@ dE.binomial <- function(p, simils, t, model){
   if(p<=0) return(NA)
   
   w <- coef(model)  #Extract w
+  if(any(class(model)=="glmnet")) w <- w[,1]
   names(w) <- gsub('X','',names(w)) # Remove X from names
   prototypes <- names(w)[-which(names(w) %in% c("(Intercept)"))]
   # Compute net result
@@ -142,6 +144,7 @@ dE.binomial <- function(p, simils, t, model){
 E.multinomial <- function(p, simils, t, model){
   if(p<=0) return(NA)
   w <- coef(model)  #Extract w
+  if(any(class(model)=="glmnet")) w <- w[,1]
   colnames(w) <- gsub('X','',colnames(w)) # Remove X from names
   
   prototypes <- colnames(w)[-which(colnames(w) %in% c("(Intercept)"))]
@@ -173,6 +176,7 @@ dE.multinomial <- function(p, simils, t, model){
   if(p<=0) return(NA)
   
   w <- coef(model)  #Extract w
+  if(any(class(model)=="glmnet")) w <- w[,1]
   colnames(w) <- gsub('X','',colnames(w)) # Remove X from names
   prototypes <- colnames(w)[-which(colnames(w) %in% c("(Intercept)"))]
   
@@ -201,20 +205,31 @@ dE.multinomial <- function(p, simils, t, model){
 ##############
 # Optimize p #
 ##############
-optimize_p <- function(x.simils,y, pInitial= 0.5,maxIter=100, toler=1e-5,...){
+# maxIter <- maximum number of iterations
+# pToler <- p change tolerance
+# objToler <- objective function change tolerance
+
+optimize_p <- function(x.simils,y, pInitial= NULL,maxIter=100, pToler=1e-5,objFuncToler=1e-5,...){
   cat('Optimization of p - pInitial = ', pInitial, '\n')
+  
+  # If null, initialize p
+  if(is.null(pInitial))
+    pInitial <- optimize_p_initializeP(x.simils,y,...)$bestInitialP
+  
   bestP <- pInitial
+  bestObjFunc <- 1e50
   iter = 1
   while (iter < maxIter){
     model <- optimize_p_create_model_given_p(x.simils, y, bestP,...)
-    cat('Iter ', iter, ' (1) p = ', bestP, '(opt value:',E.func(bestP, x.simils, y, model), ', nnet:', tmpGetObjFunc(model),')\n')
+    cat('Iter ', iter, ' (1) p = ', bestP, '(opt value:',E.func(bestP, x.simils, y, model), ', model:', getModelObjFunction(model),')\n')
     optRes <- optimize_p_given_model(x.simils, y, model, bestP)
     newP <- optRes$par
     cat('Iter ', iter, ' (2) p = ', newP, '(opt value:',E.func(newP, x.simils, y, model), ', opt:', optRes$value,')\n')
-    if(abs(bestP-newP) < toler){
+    cat('Coefs: ', coef(model), "\n" )
+    if((abs(bestP-newP) < pToler)|| (abs(bestObjFunc-optRes$value) < objFuncToler))
       break;
-    }
     bestP <- newP
+    bestObjFunc <- optRes$value
     iter = iter + 1
   }
   z <- list()
@@ -225,15 +240,37 @@ optimize_p <- function(x.simils,y, pInitial= 0.5,maxIter=100, toler=1e-5,...){
   z
   
 }
-tmpGetObjFunc <- function(model){
+
+# Try several initial p, and take the best one.
+optimize_p_initializeP <- function(x.simils,y,...){
+  cat('Computing pInitial\n')
+  pInitials <- seq(0.1,1,0.1)
+  res <- numeric(length(pInitials))
+  for(i in 1:length(pInitials)){
+    model <- optimize_p_create_model_given_p(x.simils, y, pInitials[i],...)
+    res[i] <- E.func(pInitials[i], x.simils, y, model)
+  }
+  globRes <<- res
+  z <- list()
+  z$res <- res
+  z$bestInitialP <- pInitials[which.min(res)]
+  z
+  
+}
+getModelObjFunction <- function(model){
   if(class(model)[1]=="glm"){
     return(model$deviance/2)
   }
   if(class(model)[1]=="multinom"){
     return(model$value)
   }
+  if(class(model)[1] == "lm"){
+    return(mse(model$residuals))
+  }
   return(0)
 }
+
+mse <- function(residuals) mean(residuals^2)
 
 # Step 1 of method 1:
 # Create a model given a p value (optimize w given a p value)
@@ -258,7 +295,7 @@ optimize_p_given_model <- function(simils, t, model, pInitial = 0.1){
   #Gradient
   grad <- function(p) dE.func(p, simils, t, model)
   
-  res <- optim(pInitial, func, grad, method = "BFGS",control = list(abstol = 1e-50, reltol = 1e-50,fnscale=1e-10))
+  res <- optim(pInitial, func, grad, method = "BFGS",control = list(abstol = 1e-10, reltol = 1e-10,fnscale=1e-10))
   #print(res)
   res
 }
@@ -266,13 +303,48 @@ optimize_p_given_model <- function(simils, t, model, pInitial = 0.1){
 
 # Try a range of p, and return the one with highest value
 optimize_p_test_range_of_values <- function(simils, t, ps = NULL){
-  if(is.null(ps)) ps = seq(0.01,1,0.01)
+  if(is.null(ps)) ps = seq(0.01,2,0.01)
   
   E.res <- sapply(ps, function(p) {
     model <- optimize_p_create_model_given_p(simils,t,p)
-    E.val <- E.func(p, simils,t, model)
+    hatDiag <- influence(model)$hat
+    E.val <- E.func(p, simils,t, model)*length(hatDiag)/sum((1-hatDiag)^2)
     return(E.val)
   })
+  
+  
+  z <- list()
+  z$bestP <- ps[which.min(E.res)[1]]
+  z$ps <- ps
+  z$ps.E <- E.res
+  z
+}
+
+
+# Try a range of p, and return the one with highest value
+optimize_p_kFoldCV <- function(simils, prototypes, t, ps = NULL,...){
+  if(is.null(ps)) ps = seq(0.01,2,0.01)
+  kFolds <- 10
+  E.res <- sapply(ps, function(p) {
+    foldid <<- sample(rep(seq(kFolds), length = length(t)))
+    z <- numeric(kFolds)
+    for(k in 1:kFolds){
+      simils_train <<- simils[foldid!=k,prototypes]
+      t_train <<- t[foldid!=k]
+      simils_test <<- simils[foldid==k,prototypes]
+      t_test <<- t[foldid==k]
+      model <<- optimize_p_create_model_given_p(simils_train,t_train,p,...)
+      z[k] <- E.func(p, simils_test,t_test, model)
+      #cat("p= ", p, " - Fold ", k , "/", kFolds, "\n")
+    }
+    cat("p= ", p, " - Result: ", mean(z), "\n")
+    #model <- optimize_p_create_model_given_p(simils,t,p)
+    #hatDiag <- influence(model)$hat
+    #E.val <- E.func(p, simils,t, model)*length(hatDiag)/sum((1-hatDiag)^2)
+    return(mean(z))
+  })
+  
+  
   z <- list()
   z$bestP <- ps[which.min(E.res)[1]]
   z$ps <- ps
