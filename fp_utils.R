@@ -13,63 +13,65 @@ dfp <- function(x,p){
   else       return((-((x-0.5) + a(p)) + p*da(p)) / (x-0.5+a(p))^2 + da(p))
 }
 
-E.func <- function(p, simils, t, model) {
+E.func <- function(p, simils, t, w, reg=FALSE,lambda = 0) {
   if(is.logical(t) ||(is.factor(t)&&nlevels(t)==2))
-    return(E.binomial(p,simils,t,model))
+    return(E.binomial(p,simils,t,w,reg,lambda))
   
   else if(is.factor(t))
-    return(E.multinomial(p,simils,t,model))
+    return(E.multinomial(p,simils,t,w,reg,lambda))
   
   else if(is.numeric(t))
-    return(E.regression(p,simils,t,model))
+    return(E.regression(p,simils,t,w,reg,lambda))
   
   else 
     stop(gettextf("E func ('%s') is not supported.", class(t)))
 }
 
-dE.func <- function(p, simils, t, model) {
+dE.func <- function(p, simils, t, w) {
   if(is.logical(t)||(is.factor(t)&&nlevels(t)==2))
-    return(dE.binomial(p,simils,t,model))
+    return(dE.binomial(p,simils,t,w))
   
   else if(is.factor(t))
-    return(dE.multinomial(p,simils,t,model))
+    return(dE.multinomial(p,simils,t,w))
   
   else if(is.numeric(t))
-    return(dE.regression(p,simils,t,model))
+    return(dE.regression(p,simils,t,w))
   
   else 
     stop(gettextf("dE func ('%s') is not supported.", class(t)))
 }
 
+E.func.from_model <- function(p, simils, t, model) {
+  return(E.func(p,simils,t,extractCoefficients(model), isRegularization(model), model$lambda))
+}
 
+dE.func.from_model <- function(p, simils, t, model) {
+  return(dE.func(p,simils,t,extractCoefficients(model)))
+}
 
 ################
 # Regression E #
 ################
 
 # E function (error) for regression= t - snn(x)
-E.regression <- function(p, simils, t, model) {
+E.regression <- function(p, simils, t, w, reg=FALSE, lambda = 0) {
   if(p<=0) return(NA)
   
-  w <- coef(model)  #Extract w
-  if(any(class(model)=="glmnet")) w <- w[,1]
   w0 <- w["(Intercept)"]                         #Intercept
   w <- w[-which(names(w) %in% c("(Intercept)"))] # Remove intercept
-  names(w) <- gsub('X','',names(w))              # Remove X from names
   
   snn.res <- apply(simils[,names(w)], c(1,2), function(x) fp(x,p))
   snn.res <- snn.res %*% w
   snn.res <- snn.res + w0
-  res <-(sum((t - snn.res)^2)/length(t))
-  #cat('Pval: ', p, ' - optVal= ', res, '\n')
-  return(res)
+  z <- 1/2*(sum((t - snn.res)^2))/length(t)
+
+  if(reg) z <- z + 1/2*lambda * (sum(w^2))
+  return(z)
 }
 
-dE.regression <- function(p, simils, t, model) {
+dE.regression <- function(p, simils, t, w) {
   if(p<=0) return(NA)
   
-  w <- coef(model)  #Extract w
-  if(any(class(model)=="glmnet")) w <- w[,1]
   w0 <- w["(Intercept)"]                         #Intercept
   w <- w[-which(names(w) %in% c("(Intercept)"))] # Remove intercept
   names(w) <- gsub('X','',names(w))              # Remove X from names
@@ -94,28 +96,24 @@ dE.regression <- function(p, simils, t, model) {
 ##############
 
 
-E.binomial <- function(p, simils, t, model){
+E.binomial <- function(p, simils, t, w, reg=FALSE, lambda = 0){
   if(p<=0) return(NA)
   
-  w <- coef(model)  #Extract w
-  if(any(class(model)=="glmnet")) w <- w[,1]
-  names(w) <- gsub('X','',names(w)) # Remove X from names
   prototypes <- names(w)[-which(names(w) %in% c("(Intercept)"))]
   
   X <- apply(simils[,prototypes], c(1,2), function(x) fp(x,p))
   X <- cbind(1, X) %*% w
   nnRes <- sigmoid(X)
   
-  z = class.ind(t) * ln(cbind(1-nnRes, nnRes))
-  return(-sum(z))
+  z <- class.ind(t) * ln(cbind(1-nnRes, nnRes)) 
+  z <- -sum(z)/length(t)
+  if(reg) z <- z + 1/2*lambda * (sum(w^2))
+  return(z)
 }
 
-dE.binomial <- function(p, simils, t, model){
+dE.binomial <- function(p, simils, t, w){
   if(p<=0) return(NA)
   
-  w <- coef(model)  #Extract w
-  if(any(class(model)=="glmnet")) w <- w[,1]
-  names(w) <- gsub('X','',names(w)) # Remove X from names
   prototypes <- names(w)[-which(names(w) %in% c("(Intercept)"))]
   # Compute net result
   X <- apply(simils[,prototypes], c(1,2), function(x) fp(x,p))
@@ -141,15 +139,10 @@ dE.binomial <- function(p, simils, t, model){
 # Multinom E #
 ##############
 
-E.multinomial <- function(p, simils, t, model){
+E.multinomial <- function(p, simils, t, w, reg=FALSE, lambda = 0){
   if(p<=0) return(NA)
-  w <- coef(model)  #Extract w
-  if(any(class(model)=="glmnet")) w <- w[,1]
-  colnames(w) <- gsub('X','',colnames(w)) # Remove X from names
   
   prototypes <- colnames(w)[-which(colnames(w) %in% c("(Intercept)"))]
-  
-  
   X <- apply(simils[,prototypes], c(1,2), function(x) fp(x,p))
   X <- cbind(1, X)
   X <- X %*% t(w)
@@ -158,7 +151,9 @@ E.multinomial <- function(p, simils, t, model){
   nnetRes <- t(apply(X, 1, function(r) exp(r)/sum(exp(r))))
   
   z<-class.ind(t)*apply(nnetRes,c(1,2),function(r)ln(r))
-  return(-sum(z))
+  z<- -sum(z)/length(t)
+  if(reg) z <- z + 1/2*lambda * (sum(w^2))
+  return(z)
 }
 
 ln <- function(v){
@@ -172,12 +167,9 @@ ln <- function(v){
   z
 }
 
-dE.multinomial <- function(p, simils, t, model){
+dE.multinomial <- function(p, simils, t, w){
   if(p<=0) return(NA)
   
-  w <- coef(model)  #Extract w
-  if(any(class(model)=="glmnet")) w <- w[,1]
-  colnames(w) <- gsub('X','',colnames(w)) # Remove X from names
   prototypes <- colnames(w)[-which(colnames(w) %in% c("(Intercept)"))]
   
   
@@ -221,11 +213,12 @@ optimize_p <- function(x.simils,y, pInitial= NULL,maxIter=100, pToler=1e-5,objFu
   iter = 1
   while (iter < maxIter){
     model <- optimize_p_create_model_given_p(x.simils, y, bestP,...)
-    cat('Iter ', iter, ' (1) p = ', bestP, '(opt value:',E.func(bestP, x.simils, y, model), ', model:', getModelObjFunction(model),')\n')
+    cat('Iter ', iter, ' (1) p = ', bestP, '(opt value:',E.func.from_model(bestP, x.simils, y, model), ', model:', getModelObjFunction(model),')\n')
+    cat('lambda: ', model$lambda, '\n')
     optRes <- optimize_p_given_model(x.simils, y, model, bestP)
     newP <- optRes$par
-    cat('Iter ', iter, ' (2) p = ', newP, '(opt value:',E.func(newP, x.simils, y, model), ', opt:', optRes$value,')\n')
-    cat('Coefs: ', coef(model), "\n" )
+    cat('Iter ', iter, ' (2) p = ', newP, '(opt value:',E.func.from_model(newP, x.simils, y, model), ', opt:', optRes$value,')\n')
+    #cat('Coefs: ', coef(model), "\n" )
     if((abs(bestP-newP) < pToler)|| (abs(bestObjFunc-optRes$value) < objFuncToler))
       break;
     bestP <- newP
@@ -248,15 +241,14 @@ optimize_p_initializeP <- function(x.simils,y,...){
   res <- numeric(length(pInitials))
   for(i in 1:length(pInitials)){
     model <- optimize_p_create_model_given_p(x.simils, y, pInitials[i],...)
-    res[i] <- E.func(pInitials[i], x.simils, y, model)
+    res[i] <- E.func.from_model(pInitials[i], x.simils, y, model)
   }
-  globRes <<- res
   z <- list()
   z$res <- res
-  z$bestInitialP <- pInitials[which.min(res)]
+  z$bestInitialP <- pInitials[which.min(res)][1]
   z
-  
 }
+
 getModelObjFunction <- function(model){
   if(class(model)[1]=="glm"){
     return(model$deviance/2)
@@ -267,7 +259,37 @@ getModelObjFunction <- function(model){
   if(class(model)[1] == "lm"){
     return(mse(model$residuals))
   }
+  if(any(class(model)=="glmnet")){
+    return(-1)
+  }
   return(0)
+}
+
+fpOpt.createRegressionModel <- function(dataframe,method="lm",p,..., trace=TRUE){
+  if(method=="lm"){
+    if(trace) cat("[Regression] Creating lm model...\n")
+    model <- lm (Target~., data=dataframe)
+    #model <- step(model, trace=0)
+  }
+  else if(method=="ridge" || method=="lasso"){
+    if(trace) cat("[Regression] Creating ridge/lasso regression model...\n")
+    x <- as.matrix(dataframe[,-which(names(dataframe) %in% c("Target"))])
+    y <- dataframe$Target
+    
+    alpha <- ifelse(method=="lasso", 1, 0)
+    
+    lambdas <- 2^(-10:10)
+    model <- glmnet(x,y,family="gaussian", alpha=alpha, lambda = lambdas, standardize=FALSE)
+    #lambdas <- model$lambda
+    r <- sapply(1:length(lambdas), function(l) E.func(p,x, y, coef(model)[,l], TRUE, lambdas[l]))
+    bestLambda <- lambdas[which.min(lambdas)][1]
+    resG <<- r
+    gLambdas <<- lambdas
+    model <- glmnet(x,y,family="gaussian", lambda=bestLambda, alpha=alpha, standardize=FALSE)
+  }
+  else
+    stop(gettextf("Regression method '%s' is not supported. Choose: lm, ridge or lasso", method))
+  model
 }
 
 mse <- function(residuals) mean(residuals^2)
@@ -281,19 +303,36 @@ optimize_p_create_model_given_p <- function(simils, y, p, ...){
     model <- snn.createClassificationModel(learn.data, trace=FALSE,...)
   }
   else if(is.numeric(y)){
-    model <- snn.createRegressionModel(learn.data, trace=FALSE, ...)
+    model <- fpOpt.createRegressionModel(learn.data, trace=FALSE,p=p, ...)
   }
   return(model)
+}
+
+extractCoefficients <- function(model){
+  w <- coef(model)  #Extract w
+  if(any(class(model)=="glmnet")) w <- w[,1]
+  # Remove X from names
+  if(is.vector(w))
+    names(w) <- gsub('X','',names(w)) 
+  else if(is.matrix(w))
+      colnames(w) <- gsub('X','',colnames(w)) 
+  return(w)
+}
+
+isRegularization<- function(model){
+  return(any(class(model)=="glmnet"))
 }
 
 # Step 2 of method 1:
 # Function that given a model/w vector, optimize the p value
 optimize_p_given_model <- function(simils, t, model, pInitial = 0.1){
-  
+  w <- extractCoefficients(model)
+  isReg <- isRegularization(model)
+  lambda <- model$lambda
   #Function to optimize
-  func <- function(p) E.func(p, simils, t, model)
+  func <- function(p) E.func(p, simils, t, w, isReg, lambda)
   #Gradient
-  grad <- function(p) dE.func(p, simils, t, model)
+  grad <- function(p) dE.func(p, simils, t, w)
   
   res <- optim(pInitial, func, grad, method = "BFGS",control = list(abstol = 1e-10, reltol = 1e-10,fnscale=1e-10))
   #print(res)
@@ -308,7 +347,7 @@ optimize_p_test_range_of_values <- function(simils, t, ps = NULL){
   E.res <- sapply(ps, function(p) {
     model <- optimize_p_create_model_given_p(simils,t,p)
     hatDiag <- influence(model)$hat
-    E.val <- E.func(p, simils,t, model)*length(hatDiag)/sum((1-hatDiag)^2)
+    E.val <- E.func.from_model(p, simils,t, model)*length(hatDiag)/sum((1-hatDiag)^2)
     return(E.val)
   })
   
@@ -326,15 +365,15 @@ optimize_p_kFoldCV <- function(simils, prototypes, t, ps = NULL,...){
   if(is.null(ps)) ps = seq(0.01,2,0.01)
   kFolds <- 10
   E.res <- sapply(ps, function(p) {
-    foldid <<- sample(rep(seq(kFolds), length = length(t)))
+    foldid <- sample(rep(seq(kFolds), length = length(t)))
     z <- numeric(kFolds)
     for(k in 1:kFolds){
-      simils_train <<- simils[foldid!=k,prototypes]
-      t_train <<- t[foldid!=k]
-      simils_test <<- simils[foldid==k,prototypes]
-      t_test <<- t[foldid==k]
-      model <<- optimize_p_create_model_given_p(simils_train,t_train,p,...)
-      z[k] <- E.func(p, simils_test,t_test, model)
+      simils_train <- simils[foldid!=k,prototypes]
+      t_train <- t[foldid!=k]
+      simils_test <- simils[foldid==k,prototypes]
+      t_test <- t[foldid==k]
+      model <- optimize_p_create_model_given_p(simils_train,t_train,p,...)
+      z[k] <- E.func.from_model(p, simils_test,t_test, model)
       #cat("p= ", p, " - Fold ", k , "/", kFolds, "\n")
     }
     cat("p= ", p, " - Result: ", mean(z), "\n")
