@@ -134,8 +134,8 @@ snn.createClassificationModel <- function(dataframe,method="glm",..., trace=TRUE
     x <- as.matrix(dataframe[,-which(names(dataframe) %in% c("Target"))])
     y <- dataframe$Target
     alpha <- ifelse(method=="lasso", 1, 0)
-    cv.result <- cv.glmnet(x, y, nfolds = 10, family = family.type, alpha=alpha)
-    model <- glmnet(x,y,family=family.type, lambda=cv.result$lambda.1se[1], alpha=alpha)
+    cv.result <- cv.glmnet(x, y, nfolds = 10, family = family.type, alpha=alpha, standardize=FALSE)
+    model <- glmnet(x,y,family=family.type, lambda=cv.result$lambda.min[1], alpha=alpha, standardize=FALSE)
   }
   else
     stop(gettextf("Classification method '%s' is not supported. Choose: glm, multinom, ridge, lasso", method))
@@ -154,8 +154,8 @@ snn.createRegressionModel <- function(dataframe,method="lm",..., trace=TRUE){
     x <- as.matrix(dataframe[,-which(names(dataframe) %in% c("Target"))])
     y <- dataframe$Target
     alpha <- ifelse(method=="lasso", 1, 0)
-    cv.result <- cv.glmnet(x, y, nfolds = 10, family = "gaussian", alpha=alpha)
-    model <- glmnet(x,y,family="gaussian", lambda=cv.result$lambda.1se[1], alpha=alpha)
+    cv.result <- cv.glmnet(x, y, nfolds = 10, family = "gaussian", alpha=alpha, standardize=FALSE)
+    model <- glmnet(x,y,family="gaussian", lambda=cv.result$lambda.1se[1], alpha=alpha, standardize=FALSE)
   }
   else
     stop(gettextf("Regression method '%s' is not supported. Choose: lm, ridge or lasso", method))
