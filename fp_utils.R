@@ -265,6 +265,39 @@ getModelObjFunction <- function(model){
   return(0)
 }
 
+fpOpt.createClassificationModel <- function(dataframe,method="glm",p,..., trace=TRUE){
+  y <- model.response(model.frame(Target~.,dataframe))
+  if(is.logical(y) || (is.factor(y) && nlevels(y)==2))
+    family.type <- "binomial"
+  else if(is.factor(y) && nlevels(y)>2)
+    family.type <- "multinomial"
+  
+  if(method=="glm" && family.type == "binomial"){
+    if(trace) cat("[Classification] Creating glm model...\n")
+    model <- glm (Target~., data=dataframe, family="binomial",control = list(maxit = 100),...)
+    #model <- step(model, trace=0)
+  }
+  else if(method=="multinom" && family.type == "multinomial"){
+    if(trace) cat("[Classification] Creating multinom model...\n")
+    model <- multinom (Target~., data=dataframe,trace=FALSE,maxit=500,abstol=1e-6,...)
+  }
+  else if(method=="ridge" || method=="lasso"){
+    if(trace) cat("[Classification] Creating ridge/lasso model...\n")
+    x <- as.matrix(dataframe[,-which(names(dataframe) %in% c("Target"))])
+    y <- dataframe$Target
+    alpha <- ifelse(method=="lasso", 1, 0)
+    lambdas <- 2^(-10:10)
+    model <- glmnet(x,y,family=family.type, alpha=alpha, lambda = lambdas, standardize=FALSE)
+    #lambdas <- model$lambda
+    r <- sapply(1:length(lambdas), function(l) E.func(p,x, y, coef(model)[,l], TRUE, lambdas[l]))
+    bestLambda <- lambdas[which.min(lambdas)][1]
+    model <- glmnet(x,y,family=family.type, lambda=bestLambda, alpha=alpha, standardize=FALSE)
+  }
+  else
+    stop(gettextf("Classification method '%s' is not supported. Choose: glm, multinom, ridge, lasso", method))
+  
+  model
+}
 fpOpt.createRegressionModel <- function(dataframe,method="lm",p,..., trace=TRUE){
   if(method=="lm"){
     if(trace) cat("[Regression] Creating lm model...\n")
@@ -300,7 +333,7 @@ optimize_p_create_model_given_p <- function(simils, y, p, ...){
   learn.data <- data.frame(apply(simils, c(1,2), function(x) fp(x,p)))
   learn.data$Target <- y
   if(is.factor(y) || is.logical(y)){
-    model <- snn.createClassificationModel(learn.data, trace=FALSE,...)
+    model <- fpOpt.createClassificationModel(learn.data, p=p, trace=FALSE,...)
   }
   else if(is.numeric(y)){
     model <- fpOpt.createRegressionModel(learn.data, trace=FALSE,p=p, ...)
