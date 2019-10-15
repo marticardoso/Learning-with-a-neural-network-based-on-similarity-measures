@@ -49,6 +49,20 @@ dE.func.from_model <- function(p, simils, t, model) {
   return(dE.func(p,simils,t,extractCoefficients(model)))
 }
 
+accuracyOrMSE <- accuracy.multinomial <- function(p, simils, t, model){
+  if(is.logical(t) ||(is.factor(t)&&nlevels(t)==2))
+    return(accuracy.binomial(p,simils,t, model))
+  
+  else if(is.factor(t))
+    return(accuracy.multinomial(p,simils,t,model))
+  
+  else if(is.numeric(t))
+    return(MSE.regression(p,simils,t,model))
+  
+  else 
+    stop(gettextf("accuracy func ('%s') is not supported.", class(t)))
+}
+
 ################
 # Regression E #
 ################
@@ -74,10 +88,6 @@ dE.regression <- function(p, simils, t, w) {
   
   w0 <- w["(Intercept)"]                         #Intercept
   w <- w[-which(names(w) %in% c("(Intercept)"))] # Remove intercept
-  names(w) <- gsub('X','',names(w))              # Remove X from names
-  
-  #snn.res <- predict(model, data.frame(apply(simils, c(1,2), function(x) fp(x,p))))
-  #dsnn.res <- predict(model, data.frame(apply(simils, c(1,2), function(x) dfp(x,p))))
   
   snn.res <- apply(simils[,names(w)], c(1,2), function(x) fp(x,p))
   snn.res <- snn.res %*% w
@@ -89,6 +99,18 @@ dE.regression <- function(p, simils, t, w) {
   res <- -(2/length(t) * sum((t - snn.res)*dsnn.res))
   
   return(res)
+}
+
+MSE.regression <- function(p, simils, t, model){
+  if(p<=0) return(NA)
+  
+  w <- extractCoefficients(model)
+  prototypes <- names(w)[-which(names(w) %in% c("(Intercept)"))]
+  
+  X <- apply(simils[,prototypes], c(1,2), function(x) fp(x,p))
+  response <- predict (model, data.frame(X))
+  z <- (sum((t - response)^2))/length(t)
+  return(z)
 }
 
 ##############
@@ -135,6 +157,19 @@ dE.binomial <- function(p, simils, t, w){
   return(-sum(z))
 }
 
+accuracy.binomial <- function(p, simils, t, model){
+  if(p<=0) return(NA)
+  
+  w <- extractCoefficients(model)
+  prototypes <- names(w)[-which(names(w) %in% c("(Intercept)"))]
+  
+  X <- apply(simils[,prototypes], c(1,2), function(x) fp(x,p))
+  prob <- predict (model, data.frame(X), type="response")
+  response <- prob>=0.5
+  tab <- table(Truth=t,Pred=response)
+  return(sum(diag(tab))/sum(tab))
+}
+
 ##############
 # Multinom E #
 ##############
@@ -147,10 +182,8 @@ E.multinomial <- function(p, simils, t, w, reg=FALSE, lambda = 0){
   X <- cbind(1, X)
   X <- X %*% t(w)
   X <- cbind(0,X)
-  #nnetRes <- snn.res 
-  nnetRes <- t(apply(X, 1, function(r) exp(r)/sum(exp(r))))
-  
-  z<-class.ind(t)*apply(nnetRes,c(1,2),function(r)ln(r))
+  nnetRes <- t(apply(X, 1, function(r) ln(exp(r)/sum(exp(r)))))
+  z<-class.ind(t)*nnetRes
   z<- -sum(z)/length(t)
   if(reg) z <- z + 1/2*lambda * (sum(w^2))
   return(z)
@@ -194,6 +227,19 @@ dE.multinomial <- function(p, simils, t, w){
   return(sum(z))
 }
 
+accuracy.multinomial <- function(p, simils, t, model){
+  if(p<=0) return(NA)
+  
+  w <- extractCoefficients(model)
+  prototypes <- colnames(w)[-which(colnames(w) %in% c("(Intercept)"))]
+  X <- apply(simils[,prototypes], c(1,2), function(x) fp(x,p))
+  colnames(X) <- paste('X', colnames(X), sep="")
+  response <- predict (model, data.frame(X), type="class")
+  tab <- table(Truth=t,Pred=response)
+  return(sum(diag(tab))/sum(tab))
+}
+
+
 ##############
 # Optimize p #
 ##############
@@ -201,8 +247,23 @@ dE.multinomial <- function(p, simils, t, w){
 # pToler <- p change tolerance
 # objToler <- objective function change tolerance
 
-optimize_p <- function(x.simils,y, pInitial= NULL,maxIter=100, pToler=1e-5,objFuncToler=1e-5,...){
+optimize_p <- function(x.simils,y, pInitial= NULL,maxIter=100, pToler=1e-6,objFuncToler=1e-6, validation=TRUE, val.subset = NULL,...){
   cat('Optimization of p - pInitial = ', pInitial, '\n')
+  
+  # Set validation and train sets
+  if(validation){
+    if(is.null(val.subset)){
+      n<-nrow(x.simils)
+      val.subset<-sample(1:n)[1:floor(n/3)]
+    }
+    x.simils.val <- x.simils [val.subset,]
+    x.simils <- x.simils[-val.subset,]
+    y.val <- y[val.subset]
+    y <- y[-val.subset]
+  }
+  ps.evolution <- c()
+  Efunc.evolution <- c()
+  valEfunc.evol <- c()
   
   # If null, initialize p
   if(is.null(pInitial))
@@ -213,23 +274,40 @@ optimize_p <- function(x.simils,y, pInitial= NULL,maxIter=100, pToler=1e-5,objFu
   iter = 1
   while (iter < maxIter){
     model <- optimize_p_create_model_given_p(x.simils, y, bestP,...)
-    cat('Iter ', iter, ' (1) p = ', bestP, '(opt value:',E.func.from_model(bestP, x.simils, y, model), ', model:', getModelObjFunction(model),')\n')
-    cat('lambda: ', model$lambda, '\n')
+    cat('Iter ', iter, ' (1) p = ', bestP, '(opt value:',E.func.from_model(bestP, x.simils, y, model), ', model:', getModelObjFunction(model),
+        ', Acc/MSE(learn):', accuracyOrMSE(bestP, x.simils, y, model),', Acc/MSE(val):', accuracyOrMSE(bestP, x.simils.val, y.val, model),')\n')
+    #cat('lambda: ', model$lambda, '\n')
     optRes <- optimize_p_given_model(x.simils, y, model, bestP)
     newP <- optRes$par
-    cat('Iter ', iter, ' (2) p = ', newP, '(opt value:',E.func.from_model(newP, x.simils, y, model), ', opt:', optRes$value,')\n')
+    cat('Iter ', iter, ' (2) p = ', newP, '(opt value:',E.func.from_model(newP, x.simils, y, model), ', opt:', optRes$value,
+        ', Acc/MSE(learn):', accuracyOrMSE(bestP, x.simils, y, model),', Acc/MSE(val):', accuracyOrMSE(bestP, x.simils.val, y.val, model),')\n')
     #cat('Coefs: ', coef(model), "\n" )
-    if((abs(bestP-newP) < pToler)|| (abs(bestObjFunc-optRes$value) < objFuncToler))
-      break;
+    
+    # Store evolutions
+    ps.evolution <- c(ps.evolution,newP)
+    Efunc.evolution <- c(Efunc.evolution, optRes$value)
+    valEfunc.evol <- c(valEfunc.evol, E.func.from_model(newP, x.simils.val, y.val, model))
+    
+    # Stopping criteria
+    shouldBreak <- FALSE
+    if((abs(bestP-newP) < pToler)){   shouldBreak <- TRUE; cat('Stopping criteria: p tolerance\n') }
+    if((abs(bestObjFunc-optRes$value) < objFuncToler)){   shouldBreak <- TRUE; cat('Stopping criteria: obj func tolerance\n')}
+    if(iter+1 == maxIter) cat('Stopping criteria: maxIterations\n')
+    
+    #Update fields
     bestP <- newP
     bestObjFunc <- optRes$value
     iter = iter + 1
+    if(shouldBreak) break
   }
   z <- list()
   z$bestP <- bestP
   z$simils <- x.simils
   z$model <- model
   z$y <- y
+  z$ps.evolution <- ps.evolution
+  z$Efunc.evolution <- Efunc.evolution
+  z$valEfunc.evol <- valEfunc.evol
   z
   
 }
@@ -251,7 +329,7 @@ optimize_p_initializeP <- function(x.simils,y,...){
 
 getModelObjFunction <- function(model){
   if(class(model)[1]=="glm"){
-    return(model$deviance/2)
+    return(model$deviance/2 /length(model$fitted.values))
   }
   if(class(model)[1]=="multinom"){
     return(model$value)

@@ -34,11 +34,13 @@ plot.fp(xs,10)
 plot.fp(xs,100)
 
 par(mfrow=c(1, 1))
-plot(xs,sapply(xs, function(v) fp(v,0.001)), type="l")
+plot(xs,sapply(xs, function(v) fp(v,0.001)), type="l", xlab= 'x', ylab='fp(x)')
 lines(xs,sapply(xs, function(v) fp(v,0.01)), type="l", col='red')
 lines(xs,sapply(xs, function(v) fp(v,0.1)), type="l", col='blue')
 lines(xs,sapply(xs, function(v) fp(v,1)), type="l", col='orange')
 lines(xs,sapply(xs, function(v) fp(v,10)), type="l", col='cyan')
+legend(0, 1, legend=c("p=0.001", "p=0.01", "p=0.1", "p=1", "p=10"),
+       col=c("black", "red","blue",'orange','cyan'), lty=1:1, cex=0.8)
 
 # Plot dfp
 plot.dfp <- function(values,p){
@@ -125,6 +127,10 @@ abline(v=ps[which.min(E.ps)[1]], col="blue")
 
 # Test initial p = 0.01
 m2.res <- optimize_p(snn.res$simil.matrix.prot, snn.res$y, pInitial=0.01)
+
+plot(m2.res$Efunc.evolution, type='l')
+plot(m2.res$ps.evolution, type='l')
+
 ps <- seq(0.01,0.4,0.001)
 E.ps <- sapply(ps, function(p) E.func.from_model(p,m2.res$simils, m2.res$y, m2.res$model))
 plot(ps,E.ps, type='l')
