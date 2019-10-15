@@ -87,14 +87,17 @@ graphics.off()
 # It is tested the optimization of p for numeric output
 
 # The following lines are used to obtain the similarity matrix that will be used in the optimization
-set.seed(1234)
+set.seed(123)
 s <- sample(nrow(prostate),60)
 snn.res <- snn(lpsa~.,prostate,subset=s, method="lm", x=TRUE, y=TRUE)
 snn.res$mse
 snn.res$nrmse
 
 # Run optimization of p (given the snn result)
-res <- optimize_p(snn.res$simil.matrix.prot, snn.res$y, method="lm", maxIter = 100)
+res <- optimize_p(snn.res$simil.matrix.prot, snn.res$y, method="lm", validation=TRUE, maxIter = 100)
+
+plot(res$ps.evol, res$E.learn.evol, xlab='p', ylab="E(p)")
+plot(res$ps.evol, res$E.val.evol,xlab='p', ylab="E(p)")
 
 # Create the new snn model with the best P
 snn.res <- snn(lpsa~.,prostate,subset=s, method="lm", clust.method="PAM", p= res$bestP, x=TRUE, y=TRUE)

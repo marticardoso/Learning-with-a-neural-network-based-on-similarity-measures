@@ -49,7 +49,7 @@ dE.func.from_model <- function(p, simils, t, model) {
   return(dE.func(p,simils,t,extractCoefficients(model)))
 }
 
-accuracyOrMSE <- accuracy.multinomial <- function(p, simils, t, model){
+accuracyOrNRMSE <- accuracy.multinomial <- function(p, simils, t, model){
   if(is.logical(t) ||(is.factor(t)&&nlevels(t)==2))
     return(accuracy.binomial(p,simils,t, model))
   
@@ -248,7 +248,7 @@ accuracy.multinomial <- function(p, simils, t, model){
 # objToler <- objective function change tolerance
 
 optimize_p <- function(x.simils,y, pInitial= NULL,maxIter=100, pToler=1e-6,objFuncToler=1e-6, validation=TRUE, val.subset = NULL,...){
-  cat('Optimization of p - pInitial = ', pInitial, '\n')
+  cat('#Optimization of p#\n')
   
   # Set validation and train sets
   if(validation){
@@ -263,13 +263,19 @@ optimize_p <- function(x.simils,y, pInitial= NULL,maxIter=100, pToler=1e-6,objFu
   }
   else{ x.simils.val <- y.val <- NULL}
   
-  ps.evolution <- c()
-  Efunc.evolution <- c()
-  valEfunc.evol <- c()
+  ps.evol <- c()
+  E.learn.evol <- c()
+  E.val.evol <- c()
   
   # If null, initialize p
-  if(is.null(pInitial))
-    pInitial <- optimize_p_initializeP(x.simils,y,...)$bestInitialP
+  if(is.null(pInitial)){
+    r <- optimize_p_initializeP(x.simils,y, x.simils.val, y.val,...)
+    pInitial <- r$bestInitialP
+    ps.evol <- r$pList
+    E.learn.evol <- r$E.learn
+    E.val.evol <- r$E.val
+  }
+  cat('pInitial = ', pInitial, '\n')
   
   bestP <- pInitial
   bestObjFunc <- 1e50
@@ -285,9 +291,9 @@ optimize_p <- function(x.simils,y, pInitial= NULL,maxIter=100, pToler=1e-6,objFu
     newP <- optRes$par
     
     # Store evolutions
-    ps.evolution <- c(ps.evolution,newP)
-    Efunc.evolution <- c(Efunc.evolution, optRes$value)
-    if(!is.null(x.simils.val)) valEfunc.evol <- c(valEfunc.evol, E.func.from_model(newP, x.simils.val, y.val, model))
+    ps.evol <- c(ps.evol,newP)
+    E.learn.evol <- c(E.learn.evol, optRes$value)
+    if(!is.null(x.simils.val)) E.val.evol <- c(E.val.evol, E.func.from_model(newP, x.simils.val, y.val, model))
     
     # Stopping criteria
     shouldBreak <- FALSE
@@ -306,9 +312,9 @@ optimize_p <- function(x.simils,y, pInitial= NULL,maxIter=100, pToler=1e-6,objFu
   z$simils <- x.simils
   z$model <- model
   z$y <- y
-  z$ps.evolution <- ps.evolution
-  z$Efunc.evolution <- Efunc.evolution
-  z$valEfunc.evol <- valEfunc.evol
+  z$ps.evol <- ps.evol
+  z$E.learn.evol <- E.learn.evol
+  z$E.val.evol <- E.val.evol
   z
   
 }
@@ -319,9 +325,9 @@ print.optimizationLog_step1 <- function(iter, bestP, x.simils, y,model, x.simils
   cat(', model:', getModelObjFunction(model))
   if(is.numeric(y)) accOrNrmseText <- "NRMSE"
   else accOrNrmseText <- "Acc"
-  cat(', ', accOrNrmseText,'(learn):', accuracyOrMSE(bestP, x.simils, y, model))
+  cat(', ', accOrNrmseText,'(learn):', accuracyOrNRMSE(bestP, x.simils, y, model))
   if(!is.null(x.simils.val) && !is.null(y.val))
-    cat(', ', accOrNrmseText,'(val):', accuracyOrMSE(bestP, x.simils.val, y.val, model))
+    cat(', ', accOrNrmseText,'(val):', accuracyOrNRMSE(bestP, x.simils.val, y.val, model))
   #cat('Coefs: ', coef(model), "\n" )
   #cat('lambda: ', model$lambda, '\n')
   cat(')\n')
@@ -334,24 +340,28 @@ print.optimizationLog_step2 <- function(iter, optRes, x.simils, y,model, x.simil
   cat(', opt:', optRes$value)
   if(is.numeric(y)) accOrNrmseText <- "NRMSE"
   else accOrNrmseText <- "Acc"
-  cat(', ',accOrNrmseText,'(learn):', accuracyOrMSE(p, x.simils, y, model))
+  cat(', ',accOrNrmseText,'(learn):', accuracyOrNRMSE(p, x.simils, y, model))
   if(!is.null(x.simils.val) && !is.null(y.val))
-    cat(', ',accOrNrmseText,'(val):', accuracyOrMSE(p, x.simils.val, y.val, model))
+    cat(', ',accOrNrmseText,'(val):', accuracyOrNRMSE(p, x.simils.val, y.val, model))
   cat(')\n')
 }
 
 # Try several initial p, and take the best one.
-optimize_p_initializeP <- function(x.simils,y,...){
+optimize_p_initializeP <- function(x.simils,y, x.simils.val = NULL, y.val = NULL,...){
   cat('Computing pInitial\n')
   pInitials <- seq(0.1,1,0.1)
-  res <- numeric(length(pInitials))
+  E.learn <- numeric(length(pInitials))
+  E.val <- numeric(length(pInitials)) 
   for(i in 1:length(pInitials)){
     model <- optimize_p_create_model_given_p(x.simils, y, pInitials[i],...)
-    res[i] <- E.func.from_model(pInitials[i], x.simils, y, model)
+    E.learn[i] <- E.func.from_model(pInitials[i], x.simils, y, model)
+    if(!is.null(x.simils.val)) E.val[i] <- E.func.from_model(pInitials[i], x.simils.val, y.val, model)
   }
   z <- list()
-  z$res <- res
-  z$bestInitialP <- pInitials[which.min(res)][1]
+  z$bestInitialP <- pInitials[which.min(E.learn)][1]
+  z$pList <- pInitials
+  z$E.learn <- E.learn
+  z$E.val <- E.val
   z
 }
 
