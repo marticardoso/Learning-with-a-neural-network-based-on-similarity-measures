@@ -63,11 +63,10 @@ snn <- function (formula, data, subset=NULL, x = TRUE, y = TRUE, ..., trace=TRUE
 }
 
 
-snn.fit <- function (x, y, method="glm", simil.types=list(),p=0.1,hp=0.1,..., trace=TRUE)
+snn.fit <- function (x, y, method="glm", simil.types=list(),hp=0.1,p=0.1,doPOptimization=FALSE, ..., trace=TRUE)
 {
   if (is.null(n <- nrow(x))) stop("'x' must be a dataframe")
-  p <- ncol(x)
-  if (p == 0L) stop("Null model")
+  if (ncol(x) == 0L) stop("Null model")
   ny <- NCOL(y)
   
   x.daisy <- daisy2(x, metric="gower", type = simil.types)
@@ -80,6 +79,11 @@ snn.fit <- function (x, y, method="glm", simil.types=list(),p=0.1,hp=0.1,..., tr
   
   prototypes <- x[id.medoid,]
   
+  if(doPOptimization){
+    optRes <- optimize_p(x.simils[,id.medoid],y, pInitial= p,method=method,...)
+    p <- optRes$bestP
+  }
+  cat('Using p=',p,'\n')
   learn.data <- data.frame(apply(x.simils[,id.medoid], c(1,2), function(x) fp(x,p)))
   
   learn.data$Target <- y
