@@ -182,15 +182,8 @@ E.multinomial <- function(p, simils, t, w, reg=FALSE, lambda = 0){
   X <- cbind(1, X)
   X <- X %*% t(w)
   X <- cbind(0,X)
-  nnetRes <- t(apply(X, 1, function(row) {
-    res <- exp(row)/sum(exp(row))
-    # If NaN, take the maximum one. NaN caused by precision
-    if(any(is.nan(res))) res <- as.numeric(row==max(row))/sum(row==max(row))
-    return(res)
-  }))
-  
-  #ToDo: fix Na
-  z<-class.ind(t)*ln(nnetRes)
+  nnetRes <- t(apply(X, 1, function(r) ln(exp(r)/sum(exp(r)))))
+  z<-class.ind(t)*nnetRes
   z<- -sum(z)/length(t)
   if(reg) z <- z + 1/2*lambda * (sum(w^2))
   return(z)
@@ -198,12 +191,11 @@ E.multinomial <- function(p, simils, t, w, reg=FALSE, lambda = 0){
 
 ln <- function(v){
   z <- v
-  if(is.matrix(v)|| (is.numeric(v) && length(v) > 1)){
+  if(is.matrix(v)){
     z[v!=0] <- log(v[v!=0])
   }
-  else if(is.numeric(v) && length(v) == 1){
-    if(v==0) z <-0
-    else z <- log(v)
+  else if(is.numeric(v) && v!=0){
+    z <- log(v)
   }
   z
 }

@@ -15,14 +15,15 @@ library(mlbench)
 
 #First we load some useful function for the model selection task
 source('SNN.R')
-
-r1 <- snn(Type~.,wine,subset=sample(nrow(wine),100),method="multinom", x=TRUE, p=0.2, hp=0.05, doPOptimization=TRUE)
+s <- sample(nrow(wine),100)
+r1 <- snn(Type~.,wine,subset=s,method="multinom", x=TRUE, p=0.2, hp=0.05, doPOptimization=TRUE)
 r1$testContingencyTable
-r2 <- snn(Type~.,wine,subset=sample(nrow(wine),100),method="ridge")
+r2 <- snn(Type~.,wine,subset=s,method="ridge")
 r2$testContingencyTable
-r3 <- snn(Type~.,wine,subset=sample(nrow(wine),100),method="lasso")
+r3 <- snn(Type~.,wine,subset=s,method="lasso")
 r3$testContingencyTable
 
+set.seed(32245)
 r4 <- snn(Type~.,wine,subset=sample(nrow(wine),100),method="multinom", clust.method = "Random", doPOptimization=TRUE)
 r4$testContingencyTable
 

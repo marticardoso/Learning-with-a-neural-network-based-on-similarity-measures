@@ -105,7 +105,7 @@ snn.res$nrmse
 
 # Some plots (E and dE)
 par(mfrow=c(2, 1))
-ps <- seq(0.5,1.5,0.01)
+ps <- seq(0.02,0.04,0.001)
 E.ps <- sapply(ps, function(p) E.func.from_model(p,res$simils, res$y, res$model) )
 dE.ps <- sapply(ps, function(p) dE.func(p,res$simils, res$y, extractCoefficients(res$model)) )
 plot(ps,E.ps, type='l')
@@ -207,8 +207,16 @@ snn.res$testContingencyTable
 
 
 # Run optimization of p (given the snn result)
-res <- optimize_p(snn.res$simil.matrix.prot, snn.res$y, method="multinom", pInitial=0.1)
+res <- optimize_p(snn.res$simil.matrix.prot, snn.res$y, method="multinom")
 par(mfrow=c(2, 1))
+
+ps <- seq(0.1,10,0.1)
+nrmse.e <- numeric(length(ps))
+for(i in 1:length(ps)){
+  snn.res <- snn(Type~.,wine,subset=s, method="multinom", p = ps[i], x=TRUE, y=TRUE)
+  nrmse.e[i] <- snn.res$testAccuracy
+}
+plot(ps, nrmse.e)
 
 ps <- seq(0.07,0.2,0.0001)
 ini <- 1
@@ -262,6 +270,7 @@ bc.snn$testContingencyTable
 
 res <- optimize_p(bc.snn$simil.matrix.prot, bc.snn$y, method="glm", maxIter = 100)
 
+plot(res$ps.evol, res$E.val.evol)
 ps <- seq(0.1,0.21,0.001)
 ini <- 1
 end <- length(ps)
@@ -288,5 +297,5 @@ s <- sample(nrow(Sonar),100)
 bc.snn <- snn(Class~.,Sonar,subset=s, method="glm", p = 0.1, hp=0.1)
 bc.snn$testContingencyTable
 
-res <- optimize_p(bc.snn$simil.matrix.prot, bc.snn$y, method="glm", pInitial=15, maxIter = 100)
+res <- optimize_p(bc.snn$simil.matrix.prot, bc.snn$y, method="glm", pInitial=0.1, maxIter = 100)
 
