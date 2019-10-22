@@ -1,4 +1,5 @@
 library(e1071)
+library(MASS)
 
 a <- function(p) -1/4+sqrt((1/2)^4 + p)
 fp <- function(x,p){
@@ -49,7 +50,7 @@ dE.func.from_model <- function(p, simils, t, model) {
   return(dE.func(p,simils,t,extractCoefficients(model)))
 }
 
-accuracyOrNRMSE <- accuracy.multinomial <- function(p, simils, t, model){
+accuracyOrNRMSE <- function(p, simils, t, model){
   if(is.logical(t) ||(is.factor(t)&&nlevels(t)==2))
     return(accuracy.binomial(p,simils,t, model))
   
@@ -71,30 +72,23 @@ accuracyOrNRMSE <- accuracy.multinomial <- function(p, simils, t, model){
 E.regression <- function(p, simils, t, w, reg=FALSE, lambda = 0) {
   if(p<=0) return(NA)
   
-  w0 <- w["(Intercept)"]                         #Intercept
-  w <- w[-which(names(w) %in% c("(Intercept)"))] # Remove intercept
+  snn.res <- apply(simils[,names(w[-1])], c(1,2), function(x) fp(x,p))
+  snn.res <- cbind(1,snn.res) %*% w
   
-  snn.res <- apply(simils[,names(w)], c(1,2), function(x) fp(x,p))
-  snn.res <- snn.res %*% w
-  snn.res <- snn.res + w0
   z <- 1/2*(sum((t - snn.res)^2))/length(t)
 
-  if(reg) z <- z + 1/2*lambda * (sum(w^2))
+  if(reg) z <- z + 1/2*lambda * (sum(w[-1]^2))
   return(z)
 }
 
 dE.regression <- function(p, simils, t, w) {
   if(p<=0) return(NA)
   
-  w0 <- w["(Intercept)"]                         #Intercept
-  w <- w[-which(names(w) %in% c("(Intercept)"))] # Remove intercept
-  
-  snn.res <- apply(simils[,names(w)], c(1,2), function(x) fp(x,p))
-  snn.res <- snn.res %*% w
-  snn.res <- snn.res + w0
+  snn.res <- apply(simils[,names(w[-1])], c(1,2), function(x) fp(x,p))
+  snn.res <- cbind(1,snn.res) %*% w
  
-  dsnn.res <- apply(simils[,names(w)], c(1,2), function(x) dfp(x,p))
-  dsnn.res <- dsnn.res %*% w # No intercept
+  dsnn.res <- apply(simils[,names(w[-1])], c(1,2), function(x) dfp(x,p))
+  dsnn.res <- dsnn.res %*% w[-1] # No intercept
   
   res <- -(2/length(t) * sum((t - snn.res)*dsnn.res))
   
@@ -105,10 +99,11 @@ NRMSE.regression <- function(p, simils, t, model){
   if(p<=0) return(NA)
   
   w <- extractCoefficients(model)
-  prototypes <- names(w)[-which(names(w) %in% c("(Intercept)"))]
+  prototypes <- names(w[-1])
   
   X <- apply(simils[,prototypes], c(1,2), function(x) fp(x,p))
-  response <- predict (model, data.frame(X))
+  response <- cbind(1,X) %*% w
+  #response <- predict (model, data.frame(X))
   z <- sum((t - response)^2) / ((length(t)-1)*var(t))
   return(z)
 }
@@ -255,7 +250,7 @@ accuracy.multinomial <- function(p, simils, t, model){
 # pToler <- p change tolerance
 # objToler <- objective function change tolerance
 
-optimize_p <- function(x.simils,y, pInitial= NULL,maxIter=100, pToler=1e-6,objFuncToler=1e-6, validation=TRUE, val.subset = NULL,...){
+optimize_p <- function(x.simils,y, pInitial= 0.5,maxIter=100, pToler=1e-6,objFuncToler=1e-6, validation=TRUE, val.subset = NULL,...){
   cat('#Optimization of p#\n')
   
   # Set validation and train sets
@@ -294,24 +289,24 @@ optimize_p <- function(x.simils,y, pInitial= NULL,maxIter=100, pToler=1e-6,objFu
     print.optimizationLog_step1(iter, bestP, x.simils, y,model, x.simils.val, y.val)
     
     #Step 2
-    optRes <- optimize_p_given_model(x.simils, y, model, bestP)
+    optRes <- optimize_p_given_model(x.simils, y, model, bestP, simils.val = x.simils.val, t.val = y.val)
     print.optimizationLog_step2(iter, optRes,x.simils, y, model, x.simils.val, y.val)
-    newP <- optRes$par
+    newP <- optRes$newP
     
     # Store evolutions
     ps.evol <- c(ps.evol,newP)
-    E.learn.evol <- c(E.learn.evol, optRes$value)
+    E.learn.evol <- c(E.learn.evol, optRes$E)
     if(!is.null(x.simils.val)) E.val.evol <- c(E.val.evol, E.func.from_model(newP, x.simils.val, y.val, model))
     
     # Stopping criteria
     shouldBreak <- FALSE
     if((abs(bestP-newP) < pToler)){   shouldBreak <- TRUE; cat('Stopping criteria: p tolerance\n') }
-    if((abs(bestObjFunc-optRes$value) < objFuncToler)){   shouldBreak <- TRUE; cat('Stopping criteria: obj func tolerance\n')}
+    if((abs(bestObjFunc-optRes$E) < objFuncToler)){   shouldBreak <- TRUE; cat('Stopping criteria: obj func tolerance\n')}
     if(iter+1 == maxIter) cat('Stopping criteria: maxIterations\n')
     
     #Update fields
     bestP <- newP
-    bestObjFunc <- optRes$value
+    bestObjFunc <- optRes$E
     iter = iter + 1
     if(shouldBreak) break
   }
@@ -342,10 +337,10 @@ print.optimizationLog_step1 <- function(iter, bestP, x.simils, y,model, x.simils
 }
 
 print.optimizationLog_step2 <- function(iter, optRes, x.simils, y,model, x.simils.val = NULL, y.val = NULL){
-  p <- optRes$par
+  p <- optRes$newP
   cat('Iter ', iter, ' (2) p = ', p)
   cat('(opt value:',E.func.from_model(p, x.simils, y, model))
-  cat(', opt:', optRes$value)
+  cat(', opt:', optRes$E)
   if(is.numeric(y)) accOrNrmseText <- "NRMSE"
   else accOrNrmseText <- "Acc"
   cat(', ',accOrNrmseText,'(learn):', accuracyOrNRMSE(p, x.simils, y, model))
@@ -424,28 +419,33 @@ fpOpt.createClassificationModel <- function(dataframe,method="glm",p,..., trace=
 }
 fpOpt.createRegressionModel <- function(dataframe,method="lm",p,..., trace=TRUE){
   if(method=="lm"){
-    if(trace) cat("[Regression] Creating lm model...\n")
     model <- lm (Target~., data=dataframe)
-    #model <- step(model, trace=0)
   }
-  else if(method=="ridge" || method=="lasso"){
-    if(trace) cat("[Regression] Creating ridge/lasso regression model...\n")
-    x <- as.matrix(dataframe[,-which(names(dataframe) %in% c("Target"))])
-    y <- dataframe$Target
+  else if(method=="ridge"){
+    #x <- as.matrix(dataframe[,-which(names(dataframe) %in% c("Target"))])
+    #y <- dataframe$Target
     
-    alpha <- ifelse(method=="lasso", 1, 0)
+    #alpha <- ifelse(method=="lasso", 1, 0)
     
-    lambdas <- 2^(-10:10)
-    model <- glmnet(x,y,family="gaussian", alpha=alpha, lambda = lambdas, standardize=FALSE)
-    #lambdas <- model$lambda
-    r <- sapply(1:length(lambdas), function(l) E.func(p,x, y, coef(model)[,l], TRUE, lambdas[l]))
-    bestLambda <- lambdas[which.min(lambdas)][1]
-    resG <<- r
-    gLambdas <<- lambdas
-    model <- glmnet(x,y,family="gaussian", lambda=bestLambda, alpha=alpha, standardize=FALSE)
+    #lambdas <- 2^(-10:10)
+    #model <- glmnet(x,y,family="gaussian", alpha=alpha, lambda = lambdas, standardize=FALSE)
+    
+    #r <- sapply(1:length(lambdas), function(l) E.func(p,x, y, coef(model)[,l], TRUE, lambdas[l]))
+    #bestLambda <- lambdas[which.min(lambdas)][1]
+    #resG <<- r
+    #gLambdas <<- lambdas
+    #model <- glmnet(x,y,family="gaussian", lambda=bestLambda, alpha=alpha, standardize=FALSE)
+    lambdas <- 2^seq(-10,10,0.25)
+   
+    r <- lm.ridge(Target~.,dataframe, lambda = lambdas)
+    lambda.id <- which.min(r$GCV)
+    best.lambda <- lambdas[lambda.id]
+    model <- lm.ridge(Target~.,dataframe,lambda = best.lambda)
+    gDf <<- dataframe
+    gModel <<- model
   }
   else
-    stop(gettextf("Regression method '%s' is not supported. Choose: lm, ridge or lasso", method))
+    stop(gettextf("Regression method '%s' is not supported. Choose: lm, ridge", method))
   model
 }
 
@@ -482,18 +482,35 @@ isRegularization<- function(model){
 
 # Step 2 of method 1:
 # Function that given a model/w vector, optimize the p value
-optimize_p_given_model <- function(simils, t, model, pInitial = 0.1){
+optimize_p_given_model <- function(simils, t, model, pInitial = 0.1, simils.val = NULL, t.val = NULL){
   w <- extractCoefficients(model)
   isReg <- isRegularization(model)
   lambda <- model$lambda
+  optimPsEvolution <<- c() # ToDo: use local variable
   #Function to optimize
-  func <- function(p) E.func(p, simils, t, w, isReg, lambda)
+  func <- function(p) {
+    if(p>0) optimPsEvolution <<- c(optimPsEvolution,p)
+    E.func(p, simils, t, w, isReg, lambda)
+  }
   #Gradient
   grad <- function(p) dE.func(p, simils, t, w)
   
-  res <- optim(pInitial, func, grad, method = "BFGS",control = list(abstol = 1e-10, reltol = 1e-10,fnscale=1e-10))
-  #print(res)
-  res
+  res <- optim(pInitial, func, grad, method = "CG",control = list(abstol = 1e-10, reltol = 1e-10,fnscale=1e-10))
+  print(res$count)
+  
+  z <- list()
+  z$newP <- res$value
+  z$E <- res$par
+  
+  # Test set
+  if(!is.null(simils.val)){
+    ps.E.val <- sapply(optimPsEvolution, function(p) E.func(p,simils.val,t.val,w,isReg,lambda))
+    best.E.id <- which.min(ps.E.val)
+    z$p.val <-  optimPsEvolution[best.E.id]
+    z$E.val <- ps.E.val[best.E.id]
+  }
+  optimPsEvolution <- NULL
+  z
 }
 
 
@@ -517,34 +534,41 @@ optimize_p_test_range_of_values <- function(simils, t, ps = NULL){
 }
 
 
-# Try a range of p, and return the one with highest value
-optimize_p_kFoldCV <- function(simils, prototypes, t, ps = NULL,...){
+# Optimize p using k fold cross validation method
+optimize_p_kFoldCV <- function(simils, prototypes, t, ps = NULL,kFolds=10,useAccuracy=FALSE,...){
   if(is.null(ps)) ps = seq(0.01,2,0.01)
-  kFolds <- 10
-  E.res <- sapply(ps, function(p) {
-    foldid <- sample(rep(seq(kFolds), length = length(t)))
-    z <- numeric(kFolds)
+  foldid <- sample(rep(seq(kFolds), length = length(t)))
+  
+  ps.ObjFunc <- numeric(length(ps))
+  ps.ObjFunc.sd <- numeric(length(ps))
+  
+  #Iterate for ps
+  for(i in 1:length(ps)){
+    foldRes <- numeric(kFolds)
+    #Iterate for folds
     for(k in 1:kFolds){
+      # Split train-val
       simils_train <- simils[foldid!=k,prototypes]
       t_train <- t[foldid!=k]
-      simils_test <- simils[foldid==k,prototypes]
-      t_test <- t[foldid==k]
-      model <- optimize_p_create_model_given_p(simils_train,t_train,p,...)
-      z[k] <- E.func.from_model(p, simils_test,t_test, model)
-      #cat("p= ", p, " - Fold ", k , "/", kFolds, "\n")
+      simils_val <- simils[foldid==k,prototypes]
+      t_val <- t[foldid==k]
+      
+      model <- optimize_p_create_model_given_p(simils_train,t_train,ps[i],...)
+      
+      if(!useAccuracy) foldRes[k] <- E.func.from_model(ps[i], simils_val,t_val, model)
+      else foldRes[k] <- accuracyOrNRMSE(p, simils_val,t_val, model)
     }
-    cat("p= ", p, " - Result: ", mean(z), "\n")
-    #model <- optimize_p_create_model_given_p(simils,t,p)
-    #hatDiag <- influence(model)$hat
-    #E.val <- E.func(p, simils,t, model)*length(hatDiag)/sum((1-hatDiag)^2)
-    return(mean(z))
-  })
-  
+    
+    ps.ObjFunc[i] <- mean(foldRes)
+    ps.ObjFunc.sd[i] <- sd(foldRes)
+    
+    cat("p= ", ps[i], " - ObjFunc: ", ps.ObjFunc[i], " - sd: ", ps.ObjFunc.sd[i], "\n")
+  }
   
   z <- list()
-  z$bestP <- ps[which.min(E.res)[1]]
+  z$bestP <- ps[which.min(ps.ObjFunc)[1]]
   z$ps <- ps
-  z$ps.E <- E.res
+  z$ps.E <- ps.ObjFunc
   z
 }
 
