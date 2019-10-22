@@ -384,57 +384,41 @@ getModelObjFunction <- function(model){
   return(0)
 }
 
-fpOpt.createClassificationModel <- function(dataframe,method="glm",p,..., trace=TRUE){
+fpOpt.createClassificationModel <- function(dataframe,regularization=FALSE,p,..., trace=TRUE){
   y <- model.response(model.frame(Target~.,dataframe))
   if(is.logical(y) || (is.factor(y) && nlevels(y)==2))
     family.type <- "binomial"
   else if(is.factor(y) && nlevels(y)>2)
     family.type <- "multinomial"
+  else stop(gettextf("Classification output '%s' is not supported.", class(y)))
   
-  if(method=="glm" && family.type == "binomial"){
+  if(!regularization && family.type == "binomial"){
     if(trace) cat("[Classification] Creating glm model...\n")
     model <- glm (Target~., data=dataframe, family="binomial",control = list(maxit = 100),...)
     #model <- step(model, trace=0)
   }
-  else if(method=="multinom" && family.type == "multinomial"){
+  else if(!regularization && family.type == "multinomial"){
     if(trace) cat("[Classification] Creating multinom model...\n")
     model <- multinom (Target~., data=dataframe,trace=FALSE,maxit=500,abstol=1e-6,...)
   }
-  else if(method=="ridge" || method=="lasso"){
+  else {
     if(trace) cat("[Classification] Creating ridge/lasso model...\n")
     x <- as.matrix(dataframe[,-which(names(dataframe) %in% c("Target"))])
     y <- dataframe$Target
-    alpha <- ifelse(method=="lasso", 1, 0)
     lambdas <- 2^(-10:10)
-    model <- glmnet(x,y,family=family.type, alpha=alpha, lambda = lambdas, standardize=FALSE)
+    model <- glmnet(x,y,family=family.type, alpha=0, lambda = lambdas, standardize=FALSE)
     #lambdas <- model$lambda
     r <- sapply(1:length(lambdas), function(l) E.func(p,x, y, coef(model)[,l], TRUE, lambdas[l]))
     bestLambda <- lambdas[which.min(lambdas)][1]
-    model <- glmnet(x,y,family=family.type, lambda=bestLambda, alpha=alpha, standardize=FALSE)
+    model <- glmnet(x,y,family=family.type, lambda=bestLambda, alpha=0, standardize=FALSE)
   }
-  else
-    stop(gettextf("Classification method '%s' is not supported. Choose: glm, multinom, ridge, lasso", method))
-  
   model
 }
-fpOpt.createRegressionModel <- function(dataframe,method="lm",p,..., trace=TRUE){
-  if(method=="lm"){
+fpOpt.createRegressionModel <- function(dataframe,regularization=FALSE,p,..., trace=TRUE){
+  if(!regularization){
     model <- lm (Target~., data=dataframe)
   }
-  else if(method=="ridge"){
-    #x <- as.matrix(dataframe[,-which(names(dataframe) %in% c("Target"))])
-    #y <- dataframe$Target
-    
-    #alpha <- ifelse(method=="lasso", 1, 0)
-    
-    #lambdas <- 2^(-10:10)
-    #model <- glmnet(x,y,family="gaussian", alpha=alpha, lambda = lambdas, standardize=FALSE)
-    
-    #r <- sapply(1:length(lambdas), function(l) E.func(p,x, y, coef(model)[,l], TRUE, lambdas[l]))
-    #bestLambda <- lambdas[which.min(lambdas)][1]
-    #resG <<- r
-    #gLambdas <<- lambdas
-    #model <- glmnet(x,y,family="gaussian", lambda=bestLambda, alpha=alpha, standardize=FALSE)
+  else {
     lambdas <- 2^seq(-10,10,0.25)
    
     r <- lm.ridge(Target~.,dataframe, lambda = lambdas)
@@ -444,9 +428,7 @@ fpOpt.createRegressionModel <- function(dataframe,method="lm",p,..., trace=TRUE)
     gDf <<- dataframe
     gModel <<- model
   }
-  else
-    stop(gettextf("Regression method '%s' is not supported. Choose: lm, ridge", method))
-  model
+  return(model)
 }
 
 mse <- function(residuals) mean(residuals^2)

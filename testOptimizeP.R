@@ -89,18 +89,18 @@ graphics.off()
 # The following lines are used to obtain the similarity matrix that will be used in the optimization
 set.seed(123)
 s <- sample(nrow(prostate),60)
-snn.res <- snn(lpsa~.,prostate,subset=s, method="lm", x=TRUE, y=TRUE)
+snn.res <- snn(lpsa~.,prostate,subset=s, x=TRUE, y=TRUE)
 snn.res$mse
 snn.res$nrmse
 
 # Run optimization of p (given the snn result)
-res <- optimize_p(snn.res$simil.matrix.prot, snn.res$y, method="ridge", validation=TRUE, maxIter = 100)
+res <- optimize_p(snn.res$simil.matrix.prot, snn.res$y, validation=TRUE, maxIter = 100)
 
 plot(res$ps.evol, res$E.learn.evol, xlab='p', ylab="E(p)")
 plot(res$ps.evol, res$E.val.evol,xlab='p', ylab="E(p)")
 
 # Create the new snn model with the best P
-snn.res <- snn(lpsa~.,prostate,subset=s, method="lm", clust.method="PAM", p= res$bestP, x=TRUE, y=TRUE)
+snn.res <- snn(lpsa~.,prostate,subset=s, clust.method="PAM", p= res$bestP, x=TRUE, y=TRUE)
 snn.res$nrmse
 
 # Some plots (E and dE)
@@ -145,7 +145,7 @@ abline(v=ps[which.min(E.ps)[1]], col="blue")
 
 
 # Test Ridge
-m3.res <- optimize_p(snn.res$simil.matrix.prot, snn.res$y, method="ridge", pInitial=0.9)
+m3.res <- optimize_p(snn.res$simil.matrix.prot, snn.res$y, regularization=TRUE, pInitial=0.9)
 ps <- seq(7,8,0.01)
 E.ps <- sapply(ps, function(p) E.func.from_model(p,m3.res$simils, m3.res$y, m3.res$model) )
 plot(ps,E.ps, type='l')
@@ -161,7 +161,7 @@ abline(v=ps[which.min(E.ps)[1]], col="blue")
 set.seed(1234)
 data(BostonHousing)
 s <- sample(nrow(BostonHousing),400)
-boss.res <- snn(medv~.,BostonHousing,subset=s, method="lm", hp=0.05, x=TRUE, y=TRUE)
+boss.res <- snn(medv~.,BostonHousing,subset=s, hp=0.05, x=TRUE, y=TRUE)
 boss.res$mse
 boss.res$nrmse
 
@@ -202,18 +202,18 @@ v3.results$avg
 # The following lines are used to obtain the similarity matrix that will be used in the optimization
 set.seed(1234)
 s <- sample(nrow(wine),60)
-snn.res <- snn(Type~.,wine,subset=s, method="multinom", x=TRUE, y=TRUE)
+snn.res <- snn(Type~.,wine,subset=s, x=TRUE, y=TRUE)
 snn.res$testContingencyTable
 
 
 # Run optimization of p (given the snn result)
-res <- optimize_p(snn.res$simil.matrix.prot, snn.res$y, method="multinom")
+res <- optimize_p(snn.res$simil.matrix.prot, snn.res$y)
 par(mfrow=c(2, 1))
 
 ps <- seq(0.1,10,0.1)
 nrmse.e <- numeric(length(ps))
 for(i in 1:length(ps)){
-  snn.res <- snn(Type~.,wine,subset=s, method="multinom", p = ps[i], x=TRUE, y=TRUE)
+  snn.res <- snn(Type~.,wine,subset=s, p = ps[i], x=TRUE, y=TRUE)
   nrmse.e[i] <- snn.res$testAccuracy
 }
 plot(ps, nrmse.e)
@@ -238,11 +238,11 @@ set.seed(1234)
 s <- sample(nrow(wine),60)
 wine2 <- wine
 wine2$Type <- wine2$Type == 1
-snn.res <- snn(Type~.,wine2,subset=s, method="glm", x=TRUE, y=TRUE)
+snn.res <- snn(Type~.,wine2,subset=s, x=TRUE, y=TRUE)
 snn.res$testContingencyTable
 
 
-res <- optimize_p(snn.res$simil.matrix.prot, snn.res$y, method="glm")
+res <- optimize_p(snn.res$simil.matrix.prot, snn.res$y)
 
 par(mfrow=c(2, 1))
 
@@ -265,11 +265,14 @@ summary(BreastCancer)
 BreastCancer$Id <- NULL
 set.seed(1)
 s <- sample(nrow(BreastCancer),500)
-bc.snn <- snn(Class~.,BreastCancer,subset=s, method="glm", p = 0.1, hp=0.05)
+bc.snn <- snn(Class~.,BreastCancer,subset=s, p = 0.1, hp=0.05)
 bc.snn$testContingencyTable
 
-res <- optimize_p(bc.snn$simil.matrix.prot, bc.snn$y, method="glm", maxIter = 100)
+res <- optimize_p(bc.snn$simil.matrix.prot, bc.snn$y, maxIter = 100)
 
+#r <- optimize_p_kFoldCV(bc.snn$simil.matrix.prot, colnames(bc.snn$simil.matrix.prot), bc.snn$y, useAccuracy=TRUE)
+  
+  
 plot(res$ps.evol, res$E.val.evol)
 ps <- seq(0.1,0.21,0.001)
 ini <- 1
@@ -284,18 +287,18 @@ opt <- optimize_p_given_model(res$simils, res$y, res$model, res$bestP)
 abline(v=opt$par, col="red")
 
 
-bc.snn <- snn(Class~.,BreastCancer,subset=s, method="ridge", p = 0.1, hp=0.05)
+bc.snn <- snn(Class~.,BreastCancer,subset=s, p = 0.1, hp=0.05)
 bc.snn$testContingencyTable
 
-res <- optimize_p(bc.snn$simil.matrix.prot, bc.snn$y, method="ridge", pInitial=0.35)
+res <- optimize_p(bc.snn$simil.matrix.prot, bc.snn$y, pInitial=0.35)
 
 
 data(Sonar)
 summary(Sonar)
 set.seed(1)
 s <- sample(nrow(Sonar),100)
-bc.snn <- snn(Class~.,Sonar,subset=s, method="glm", p = 0.1, hp=0.1)
+bc.snn <- snn(Class~.,Sonar,subset=s, p = 0.1, hp=0.1)
 bc.snn$testContingencyTable
 
-res <- optimize_p(bc.snn$simil.matrix.prot, bc.snn$y, method="glm", pInitial=0.1, maxIter = 100)
+res <- optimize_p(bc.snn$simil.matrix.prot, bc.snn$y, pInitial=0.1, maxIter = 100)
 

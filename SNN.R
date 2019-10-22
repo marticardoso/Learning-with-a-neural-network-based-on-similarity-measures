@@ -1,7 +1,8 @@
 library(cluster)
 library(glmnet)
 library(nnet)
- 
+library(MASS)
+
 source("fp_utils.R")
 source("daisy/daisy2.R")
 source("daisy/daisy2Predict.R")
@@ -63,7 +64,7 @@ snn <- function (formula, data, subset=NULL, x = TRUE, y = TRUE, ..., trace=TRUE
 }
 
 
-snn.fit <- function (x, y, method="glm", simil.types=list(),hp=0.1,p=0.1,doPOptimization=FALSE, ..., trace=TRUE)
+snn.fit <- function (x, y, regularization=FALSE, simil.types=list(),hp=0.1,p=0.1,doPOptimization=FALSE, ..., trace=TRUE)
 {
   if (is.null(n <- nrow(x))) stop("'x' must be a dataframe")
   if (ncol(x) == 0L) stop("Null model")
@@ -89,9 +90,9 @@ snn.fit <- function (x, y, method="glm", simil.types=list(),hp=0.1,p=0.1,doPOpti
   learn.data$Target <- y
   
   if(is.factor(y) || is.logical(y))
-    model <- snn.createClassificationModel(learn.data, method=method,...)
+    model <- snn.createClassificationModel(learn.data, regularization=regularization,...)
   else if(is.numeric(y))
-    model <- snn.createRegressionModel(learn.data, method=method,...)
+    model <- snn.createRegressionModel(learn.data, regularization=regularization,...)
   else stop("Output type not supported")
   
   z <- list() # Output
@@ -103,7 +104,7 @@ snn.fit <- function (x, y, method="glm", simil.types=list(),hp=0.1,p=0.1,doPOpti
   if(class(y)=="factor")
     z$outputLevels <- levels(y)
   
-  z$method <- method
+  z$regularization <- regularization
   #Debug info
   if(debug){
     z$clust.data <- clust.data
@@ -117,52 +118,45 @@ snn.fit <- function (x, y, method="glm", simil.types=list(),hp=0.1,p=0.1,doPOpti
   z
 }
 
-snn.createClassificationModel <- function(dataframe,method="glm",..., trace=TRUE){
+snn.createClassificationModel <- function(dataframe,regularization=FALSE,..., trace=TRUE){
   y <- model.response(model.frame(Target~.,dataframe))
   if(is.logical(y) || (is.factor(y) && nlevels(y)==2))
     family.type <- "binomial"
   else if(is.factor(y) && nlevels(y)>2)
     family.type <- "multinomial"
 
-  if(method=="glm" && family.type == "binomial"){
+  if(!regularization && family.type == "binomial"){
     if(trace) cat("[Classification] Creating glm model...\n")
     model <- glm (Target~., data=dataframe, family="binomial",control = list(maxit = 100),...)
-    #model <- step(model, trace=0)
   }
-  else if(method=="multinom" && family.type == "multinomial"){
+  else if(!regularization && family.type == "multinomial"){
     if(trace) cat("[Classification] Creating multinom model...\n")
     model <- multinom (Target~., data=dataframe,trace=FALSE,maxit=500,abstol=1e-6,...)
   }
-  else if(method=="ridge" || method=="lasso"){
-    if(trace) cat("[Classification] Creating ridge/lasso model...\n")
+  else{
+    if(trace) cat("[Classification] Creating ridge model...\n")
     x <- as.matrix(dataframe[,-which(names(dataframe) %in% c("Target"))])
     y <- dataframe$Target
-    alpha <- ifelse(method=="lasso", 1, 0)
-    cv.result <- cv.glmnet(x, y, nfolds = 10, family = family.type, alpha=alpha, standardize=FALSE)
-    model <- glmnet(x,y,family=family.type, lambda=cv.result$lambda.min[1], alpha=alpha, standardize=FALSE)
+    cv.result <- cv.glmnet(x, y, nfolds = 10, family = family.type, alpha=0, standardize=FALSE)
+    model <- glmnet(x,y,family=family.type, lambda=cv.result$lambda.min[1], alpha=0, standardize=FALSE)
   }
-  else
-    stop(gettextf("Classification method '%s' is not supported. Choose: glm, multinom, ridge, lasso", method))
-
   model
 }
 
-snn.createRegressionModel <- function(dataframe,method="lm",..., trace=TRUE){
-  if(method=="lm"){
+snn.createRegressionModel <- function(dataframe,regularization=FALSE,..., trace=TRUE){
+  if(!regularization){
     if(trace) cat("[Regression] Creating lm model...\n")
     model <- lm (Target~., data=dataframe)
-    #model <- step(model, trace=0)
   }
-  else if(method=="ridge" || method=="lasso"){
-    if(trace) cat("[Regression] Creating ridge/lasso regression model...\n")
-    x <- as.matrix(dataframe[,-which(names(dataframe) %in% c("Target"))])
-    y <- dataframe$Target
-    alpha <- ifelse(method=="lasso", 1, 0)
-    cv.result <- cv.glmnet(x, y, nfolds = 10, family = "gaussian", alpha=alpha, standardize=FALSE)
-    model <- glmnet(x,y,family="gaussian", lambda=cv.result$lambda.1se[1], alpha=alpha, standardize=FALSE)
+  else {
+    if(trace) cat("[Regression] Creating ridge regression model...\n")
+    
+    lambdas <- 2^seq(-10,10,0.25)
+    r <- lm.ridge(Target~.,dataframe, lambda = lambdas)
+    lambda.id <- which.min(r$GCV)
+    best.lambda <- lambdas[lambda.id]
+    model <- lm.ridge(Target~.,dataframe,lambda = best.lambda)
   }
-  else
-    stop(gettextf("Regression method '%s' is not supported. Choose: lm, ridge or lasso", method))
   model
 }
 
@@ -247,11 +241,10 @@ predict.snn = function(object, newdata,type=c("response","prob")){
   x.simils <- 1-as.matrix(x.daisy)
   x.simils <- x.simils[1:nrow(x), (nrow(x)+1):nrow(x.simils)]
   test.x <- data.frame(apply(x.simils, c(1,2), function(x) fp(x,object$p)))
-  colnames(test.x) = paste('X', row.names(object$prototypes), sep="")
+  colnames(test.x) <- paste('X', row.names(object$prototypes), sep="")
   
   
-  if(object$method=="ridge" ||object$method=="lasso" || 
-     any(class(object$method)=="glmnet")) # Glmnet does not support data frame
+  if(any(class(object$model)=="glmnet")) # Glmnet does not support data frame
     test.x  <- as.matrix(test.x)
   
   #Predict by type
@@ -276,7 +269,8 @@ predict.snn = function(object, newdata,type=c("response","prob")){
     
   }
   else if(object$outputType=="numeric"){
-    response <- predict (object$model, test.x, type="response")
+    response <- cbind(1,as.matrix(test.x)) %*% coef(object$model)
+    if(is.matrix(response)) response <- response[,1]
   }
   else
     stop("[Predicting] Output type not supported")
