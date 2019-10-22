@@ -556,7 +556,7 @@ optimize_p_kFoldCV <- function(simils, prototypes, t, ps = NULL,kFolds=10,useAcc
       model <- optimize_p_create_model_given_p(simils_train,t_train,ps[i],...)
       
       if(!useAccuracy) foldRes[k] <- E.func.from_model(ps[i], simils_val,t_val, model)
-      else foldRes[k] <- accuracyOrNRMSE(p, simils_val,t_val, model)
+      else foldRes[k] <- accuracyOrNRMSE(ps[i], simils_val,t_val, model)
     }
     
     ps.ObjFunc[i] <- mean(foldRes)
