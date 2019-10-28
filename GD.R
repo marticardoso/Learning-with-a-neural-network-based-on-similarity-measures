@@ -13,6 +13,7 @@ library(ggplot2)
 # - eps_p <- stop when p_(t+1) - p_t < eps_p
 # - eps_f <- stop when f(p) - f(p+1) < eps_f
 # - eps_g <- stop when g(p) < eps_g
+# - maxIter <- Maximum number of iterations
 
 GD <- function(f, g, x= 0.1, control) {
   eps_f <- 1e-8
@@ -139,7 +140,7 @@ plot_trace <- function(GD.res, f, f.val, title=''){
   ftraceVal <- sapply(GD.res$xtrace,f.val)
   n <- length(GD.res$xtrace)
   # Train
-  plot(1:n, ftrace, type='l', xlab='#Iterations', ylab='f(x)', ylim=range(c(ftrace,ftraceVal)), col='black', main=title )
+  plot(1:n, ftrace, type='l', xlab='# Iterations', ylab='f(x)', ylim=range(c(ftrace,ftraceVal)), col='black', main=title )
   # Val
   lines(1:n, ftraceVal, type='l', col='blue')
   abline(v=which.min(ftraceVal)[1], lty=2,col='blue')
@@ -147,35 +148,37 @@ plot_trace <- function(GD.res, f, f.val, title=''){
   legend("topright", legend=c("train", "validation"), col=c("black", "blue"), lty=1:1, cex=0.8)
 }
 
-#Simple example
-xs <- seq(0,4,len = 100) # create some values
-f <-  function(x) 1.2 * (x-2)^2 + 3.2
-grad <- function(x) 1.2 * 2 * (x-2)
+runSimpleExample <- FALSE
+if(runSimpleExample){
+  #Simple example
+  xs <- seq(0,4,len = 100) # create some values
+  f <-  function(x) 1.2 * (x-2)^2 + 3.2
+  grad <- function(x) 1.2 * 2 * (x-2)
+  
+  GD(
+    f =  f,
+    g = grad,
+    x = 0.1, # initialisation of x
+    control = list(alpha = 5, maxIter = 100)
+  )
+  
+  gdRes <- GD(f =  f,g = grad, x = 3.1, list(alpha = 5, maxIter = 100))
+  create_plot(f, xs, 'title')
+  plot_optimization(gdRes)
 
-GD(
-  f =  f,
-  g = grad,
-  x = 0.1, # initialisation of x
-  control = list(alpha = 5, maxIter = 100)
-)
-
-gdRes <- GD(f =  f,g = grad, x = 3.1, list(alpha = 5, maxIter = 100))
-create_plot(f, xs, 'title')
-plot_optimization(gdRes)
-
-
+}
 # Problem example
 if(FALSE){
   gdRes <- GD(f =  gFunc,g = gGrad, x = 3.1, list(alpha = 10, maxIter = 100))
   create_plot(gFunc, xs, 'title')
   plot_optimization(gdRes)
   
-  gdRes <- GD(f =  gFunc,g = gGrad, x = 0.1, list(alpha = 0.01, maxIter = 100))
+  gdRes <- GD(f =  gFunc,g = gGrad, x = 0.3, list(alpha = 0.01, maxIter = 100))
   plot_GD_result(gdRes, gFunc,  gFuncVal, title='alpha=0.1')
   
-  gdRes <- GD(f =  gFunc,g = gGrad, x = 0.8, list(alpha = 1, maxIter = 100))
-  plot_trace(gdRes,gFunc,  gFuncVal, title='Trace plot (alpha 0.05)')
-  plot_GD_result(gdRes, gFunc,  gFuncVal)
+  gdRes <- GD(f =  gFunc,g = gGrad, x = 0.3, list(alpha = 1, maxIter = 100))
+  plot_trace(gdRes,gFunc,  gFuncVal, title='Trace plot (alpha 1)')
+  plot_GD_result(gdRes, gFunc,  gFuncVal, title='Optimization plot (alpha 1)')
   
   gdRes <- GD(f =  gFunc,g = gGrad, x = 0.8, list(alpha = 100, maxIter = 100))
   plot_trace(gdRes,gFunc,  gFuncVal, title='Trace plot (alpha 0.1)')

@@ -1,6 +1,8 @@
 library(e1071)
 library(MASS)
 
+source("GD.R")
+
 a <- function(p) -1/4+sqrt((1/2)^4 + p)
 fp <- function(x,p){
   if(x<=0.5) return(-p/((x-0.5)-a(p)) - a(p))
