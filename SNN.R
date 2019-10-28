@@ -124,6 +124,7 @@ snn.createClassificationModel <- function(dataframe,regularization=FALSE,..., tr
     family.type <- "binomial"
   else if(is.factor(y) && nlevels(y)>2)
     family.type <- "multinomial"
+  else stop(gettextf("Classification output '%s' is not supported.", class(y)))
 
   if(!regularization && family.type == "binomial"){
     if(trace) cat("[Classification] Creating glm model...\n")
