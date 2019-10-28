@@ -250,7 +250,7 @@ accuracy.multinomial <- function(p, simils, t, model){
 # pToler <- p change tolerance
 # objToler <- objective function change tolerance
 
-optimize_p <- function(x.simils,y, pInitial= 0.5,maxIter=100, pToler=1e-6,objFuncToler=1e-6, validation=TRUE, val.subset = NULL,...){
+optimize_p <- function(x.simils,y, pInitial= NULL, maxIter=100, pToler=1e-6,objFuncToler=1e-6, validation=TRUE, val.subset = NULL,...){
   cat('#Optimization of p#\n')
   
   # Set validation and train sets
@@ -273,10 +273,7 @@ optimize_p <- function(x.simils,y, pInitial= 0.5,maxIter=100, pToler=1e-6,objFun
   # If null, initialize p
   if(is.null(pInitial)){
     r <- optimize_p_initializeP(x.simils,y, x.simils.val, y.val,...)
-    pInitial <- r$bestInitialP
-    ps.evol <- r$pList
-    E.learn.evol <- r$E.learn
-    E.val.evol <- r$E.val
+    pInitial <- r$p
   }
   cat('pInitial = ', pInitial, '\n')
   
@@ -357,19 +354,18 @@ print.optimizationLog_step2 <- function(iter, optRes, x.simils, y,model, x.simil
 # Try several initial p, and take the best one.
 optimize_p_initializeP <- function(x.simils,y, x.simils.val = NULL, y.val = NULL,...){
   cat('Computing pInitial\n')
-  pInitials <- seq(0.1,1,0.1)
-  E.learn <- numeric(length(pInitials))
-  E.val <- numeric(length(pInitials)) 
+  pInitials <- seq(0.1,2,0.1)
+  E.pInitials <- numeric(length(pInitials)) 
   for(i in 1:length(pInitials)){
     model <- optimize_p_create_model_given_p(x.simils, y, pInitials[i],...)
-    E.learn[i] <- E.func.from_model(pInitials[i], x.simils, y, model)
-    if(!is.null(x.simils.val)) E.val[i] <- E.func.from_model(pInitials[i], x.simils.val, y.val, model)
+    if(!is.null(x.simils.val)) 
+      E.pInitials[i] <- E.func.from_model(pInitials[i], x.simils.val, y.val, model)
+    else 
+      E.pInitials[i] <- E.func.from_model(pInitials[i], x.simils, y, model)
   }
   z <- list()
-  z$bestInitialP <- pInitials[which.min(E.learn)][1]
-  z$pList <- pInitials
-  z$E.learn <- E.learn
-  z$E.val <- E.val
+  z$p <- pInitials[which.min(E.pInitials)][1]
+  z$E <- E.pInitials
   z
 }
 
@@ -389,53 +385,6 @@ getModelObjFunction <- function(model){
   return(0)
 }
 
-fpOpt.createClassificationModel <- function(dataframe,regularization=FALSE,p,..., trace=TRUE){
-  y <- model.response(model.frame(Target~.,dataframe))
-  if(is.logical(y) || (is.factor(y) && nlevels(y)==2))
-    family.type <- "binomial"
-  else if(is.factor(y) && nlevels(y)>2)
-    family.type <- "multinomial"
-  else stop(gettextf("Classification output '%s' is not supported.", class(y)))
-  
-  if(!regularization && family.type == "binomial"){
-    if(trace) cat("[Classification] Creating glm model...\n")
-    model <- glm (Target~., data=dataframe, family="binomial",control = list(maxit = 100),...)
-    #model <- step(model, trace=0)
-  }
-  else if(!regularization && family.type == "multinomial"){
-    if(trace) cat("[Classification] Creating multinom model...\n")
-    model <- multinom (Target~., data=dataframe,trace=FALSE,maxit=500,abstol=1e-6,...)
-  }
-  else {
-    if(trace) cat("[Classification] Creating ridge/lasso model...\n")
-    x <- as.matrix(dataframe[,-which(names(dataframe) %in% c("Target"))])
-    y <- dataframe$Target
-    lambdas <- 2^(-10:10)
-    model <- glmnet(x,y,family=family.type, alpha=0, lambda = lambdas, standardize=FALSE)
-    #lambdas <- model$lambda
-    r <- sapply(1:length(lambdas), function(l) E.func(p,x, y, coef(model)[,l], TRUE, lambdas[l]))
-    bestLambda <- lambdas[which.min(lambdas)][1]
-    model <- glmnet(x,y,family=family.type, lambda=bestLambda, alpha=0, standardize=FALSE)
-  }
-  model
-}
-fpOpt.createRegressionModel <- function(dataframe,regularization=FALSE,p,..., trace=TRUE){
-  if(!regularization){
-    model <- lm (Target~., data=dataframe)
-  }
-  else {
-    lambdas <- 2^seq(-10,10,0.25)
-   
-    r <- lm.ridge(Target~.,dataframe, lambda = lambdas)
-    lambda.id <- which.min(r$GCV)
-    best.lambda <- lambdas[lambda.id]
-    model <- lm.ridge(Target~.,dataframe,lambda = best.lambda)
-    gDf <<- dataframe
-    gModel <<- model
-  }
-  return(model)
-}
-
 mse <- function(residuals) mean(residuals^2)
 
 # Step 1 of method 1:
@@ -444,10 +393,10 @@ optimize_p_create_model_given_p <- function(simils, y, p, ...){
   learn.data <- data.frame(apply(simils, c(1,2), function(x) fp(x,p)))
   learn.data$Target <- y
   if(is.factor(y) || is.logical(y)){
-    model <- fpOpt.createClassificationModel(learn.data, p=p, trace=FALSE,...)
+    model <- snn.createClassificationModel(learn.data, p=p, trace=FALSE,...)
   }
   else if(is.numeric(y)){
-    model <- fpOpt.createRegressionModel(learn.data, trace=FALSE,p=p, ...)
+    model <- snn.createRegressionModel(learn.data, trace=FALSE,p=p, ...)
   }
   return(model)
 }
@@ -463,55 +412,54 @@ extractCoefficients <- function(model){
   return(w)
 }
 
-isRegularization<- function(model){
-  return(any(class(model)=="glmnet"))
+isRegularization <- function(model){
+  gMOdel <<- model
+  if(any(class(model)=="ridgelm")) return(TRUE)
+  if(any(class(model)=="glmnet")) return(TRUE)
+  return(FALSE)
 }
 
 # Step 2 of method 1:
 # Function that given a model/w vector, optimize the p value
-optimize_p_given_model <- function(simils, t, model, pInitial = 0.1, simils.val = NULL, t.val = NULL, useAccuracy = TRUE){
+optimize_p_given_model <- function(simils, t, model, pInitial = 0.1, simils.val = NULL, t.val = NULL, 
+                                   useNMSE=TRUE, useAccuracy = FALSE, GD.control=NULL){
   w <- extractCoefficients(model)
   isReg <- isRegularization(model)
   lambda <- model$lambda
   
   #Function to optimize
-  func <- function(p) E.func(p, simils, t, w, isReg, lambda)
+  func <- function(p) E.func(p, simils, t, w, isReg, lambda)/var(t)*2
   #Gradient
-  grad <- function(p) dE.func(p, simils, t, w)
+  grad <- function(p) dE.func(p, simils, t, w)/var(t)*2
   
-  alpha <- 0.01
-  maxIter <- 100
-  gdRes <- GD(f =  func,g = grad, x = pInitial, alphaMax=alpha,maxIter = maxIter)
+  GD.control <- list(alpha=1, maxIter=100)
+  gdRes <- GD(f =  func,g = grad, x = pInitial, control=GD.control)
 
   z <- list()
   z$newP <- gdRes$x
   z$E <- gdRes$fx
-  ggg <<- gdRes
   # Test set
   if(!is.null(simils.val)){
     
-    func.val <- function(p) E.func(p, simils.val, t.val, w, isReg, lambda)
+    func.val <- function(p) E.func(p, simils.val, t.val, w, isReg, lambda)/var(t)*2
     func2.val <- function(p) accuracyOrNRMSE(p, simils.val,t.val, model)
     
     grad.val <- function(p) dE.func(p, simils.val, t.val, w)
     
-    if(!useAccuracy) ps.E.val <- sapply(gdRes$xtrace, func.val)
+    if(!useAccuracy && !useNMSE) ps.E.val <- sapply(gdRes$xtrace, func.val)
     else ps.E.val <- sapply(gdRes$xtrace, func2.val)
     
     best.E.id <- which.min(ps.E.val)[1]
     z$p.val <-  gdRes$xtrace[best.E.id]
     z$E.val <- ps.E.val[best.E.id]
-    cat(' newP:',gdRes$x, ' newP [val]:', z$p.val, '\n')
+    cat(' new p [train]:',gdRes$x, ' new p [val]:', z$p.val, '\n')
     z$E <- z$E.val
     z$newP <- z$p.val
-    
-    g.ps.E.val <<- ps.E.val
     
     gFuncVal <<- func.val
     gFunc2Val <<- func2.val
     gGradVal <<- grad.val
   }
-  
   gGrad <<- grad
   gFunc <<- func
   z
