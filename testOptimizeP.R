@@ -166,7 +166,7 @@ boss.res$mse
 boss.res$nrmse
 
 #Run optimization
-boss.opt <- optimize_p(boss.res$simil.matrix.prot, boss.res$y, hp=0.04, maxIter = 10)
+boss.opt <- optimize_p(boss.res$simil.matrix.prot, boss.res$y, hp=0.04, maxIter = 100)
 ps <- seq(0.5,2,0.01)
 E.ps <- sapply(ps, function(p) E.func.from_model(p,boss.opt$simils, boss.opt$y, boss.opt$model))
 plot(ps[1:300],E.ps[1:300], type='l')
