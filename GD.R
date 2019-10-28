@@ -10,6 +10,10 @@ library(ggplot2)
 # G = Gradient function
 # CONTROL
 # - alpha = learning rate
+# - eps_p <- stop when p_(t+1) - p_t < eps_p
+# - eps_f <- stop when f(p) - f(p+1) < eps_f
+# - eps_g <- stop when g(p) < eps_g
+
 GD <- function(f, g, x= 0.1, control) {
   eps_f <- 1e-8
   eps_p <- 1e-5
@@ -21,18 +25,19 @@ GD <- function(f, g, x= 0.1, control) {
     if(!is.null(control$maxIter)) maxIter <- control$maxIter
     if(!is.null(control$eps_f)) eps_f <- control$eps_f
     if(!is.null(control$eps_p)) eps_p <- control$eps_p
+    if(!is.null(control$eps_g)) eps_g <- control$eps_g
   }
   
   xtrace <- x
   ftrace <- f(x)
   g_x <- g(x)
   f_x<- f(x)
+  continue <- TRUE
   for (i in 1:maxIter) {
     
     alpha <- alphaMax
     cat('Iter',i, ' , x:', x,' alpha=', alpha,' objFunc:',f_x, '\n')
     
-    continue <- TRUE
     while(continue){
       xn <- (x - alpha * g_x)
       
@@ -47,16 +52,16 @@ GD <- function(f, g, x= 0.1, control) {
       alpha <- alpha/2
     }
     if(alpha < alphaMax) cat('\n')
-    g_xn <- g(x)
+    g_xn <- g(xn)
     
     if(abs(xn - x) < eps_p ) {
       cat('Break by eps_p\n')
       cat('# x:', x, 'xn:',xn, '\n')
       cat('# f:', f_x, 'f(xn):',f_xn, '\n')
       cat('# g(x):', g_x, 'g(xn):',g_xn,'\n')
-      continue = FALSE
+      continue <- FALSE
     }
-    else if(abs(f_x - f_xn) < eps_f ){
+    else if(sign(g_xn)==sign(g_x) && abs(f_x - f_xn) < eps_f ){
       cat('Break by eps_f\n')
       cat('# x:', x, 'xn:',xn, '\n')
       cat('# f:', f_x, 'f(xn):',f_xn, '\n')
@@ -78,7 +83,7 @@ GD <- function(f, g, x= 0.1, control) {
     
     xtrace <- c(xtrace,x)
     ftrace <- c(ftrace,f_x)
-    
+    if(!continue) break;
   }
   list(
     "xtrace" = xtrace,
