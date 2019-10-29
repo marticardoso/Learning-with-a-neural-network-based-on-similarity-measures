@@ -64,7 +64,7 @@ snn <- function (formula, data, subset=NULL, x = TRUE, y = TRUE, ..., trace=TRUE
 }
 
 
-snn.fit <- function (x, y, regularization=FALSE, simil.types=list(),hp=0.1,p=0.1,doPOptimization=FALSE, ..., trace=TRUE)
+snn.fit <- function (x, y, regularization=FALSE, simil.types=list(),hp=0.1,p=0.1,p.control=NULL,..., trace=TRUE)
 {
   if (is.null(n <- nrow(x))) stop("'x' must be a dataframe")
   if (ncol(x) == 0L) stop("Null model")
@@ -80,9 +80,20 @@ snn.fit <- function (x, y, regularization=FALSE, simil.types=list(),hp=0.1,p=0.1
   
   prototypes <- x[id.medoid,]
   
-  if(doPOptimization){
-    optRes <- optimize_p(x.simils[,id.medoid],y, pInitial= p,method=method,...)
-    p <- optRes$bestP
+  if(!is.null(p.control)) {
+    if(p.control$method=='Opt'){
+      optRes <- optimize_p(x.simils[,id.medoid],y, pInitial= p,method=method,...)
+      p <- optRes$bestP
+    }
+    else if(p.control$method=='CV'){
+      optRes <- optimize_p_kFoldCV(x.simils, id.medoid, y, control=p.control,...)
+      p <- optRes$bestP
+    }
+    else if(p.control$method=='G'){
+      optRes <- optimize_p_method3(1-x.simils, findclusters.res, type=p.control$type)
+      if(is.numeric(optRes)) p <- optRes
+      else p <- optRes$avg
+    }
   }
   cat('Using p=',p,'\n')
   learn.data <- data.frame(apply(x.simils[,id.medoid], c(1,2), function(x) fp(x,p)))

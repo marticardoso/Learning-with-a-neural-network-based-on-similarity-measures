@@ -94,7 +94,7 @@ snn.res$mse
 snn.res$nrmse
 
 # Run optimization of p (given the snn result)
-res <- optimize_p(snn.res$simil.matrix.prot, snn.res$y, validation=TRUE, maxIter = 100)
+res <- optimize_p(snn.res$simil.matrix.prot, snn.res$y)
 
 plot(res$ps.evol, res$E.learn.evol, xlab='p', ylab="E(p)")
 plot(res$ps.evol, res$E.val.evol,xlab='p', ylab="E(p)")
@@ -131,8 +131,8 @@ abline(v=ps[which.min(E.ps)[1]], col="blue")
 # Test initial p = 0.01
 m2.res <- optimize_p(snn.res$simil.matrix.prot, snn.res$y, pInitial=0.01)
 
-plot(m2.res$Efunc.evolution, type='l')
-plot(m2.res$ps.evolution, type='l')
+plot(m2.res$E.learn.evol, type='l')
+plot(m2.res$ps.evol, type='l')
 
 ps <- seq(0.01,0.4,0.001)
 E.ps <- sapply(ps, function(p) E.func.from_model(p,m2.res$simils, m2.res$y, m2.res$model))
@@ -166,7 +166,7 @@ boss.res$mse
 boss.res$nrmse
 
 #Run optimization
-boss.opt <- optimize_p(boss.res$simil.matrix.prot, boss.res$y, hp=0.04, maxIter = 100)
+boss.opt <- optimize_p(boss.res$simil.matrix.prot, boss.res$y, hp=0.04)
 ps <- seq(0.5,2,0.01)
 E.ps <- sapply(ps, function(p) E.func.from_model(p,boss.opt$simils, boss.opt$y, boss.opt$model))
 plot(ps[1:300],E.ps[1:300], type='l')
@@ -268,7 +268,7 @@ s <- sample(nrow(BreastCancer),500)
 bc.snn <- snn(Class~.,BreastCancer,subset=s, p = 0.1, hp=0.05)
 bc.snn$testContingencyTable
 
-res <- optimize_p(bc.snn$simil.matrix.prot, bc.snn$y, maxIter = 100)
+res <- optimize_p(bc.snn$simil.matrix.prot, bc.snn$y)
 
 #r <- optimize_p_kFoldCV(bc.snn$simil.matrix.prot, colnames(bc.snn$simil.matrix.prot), bc.snn$y, useAccuracy=TRUE)
   
@@ -300,5 +300,5 @@ s <- sample(nrow(Sonar),100)
 bc.snn <- snn(Class~.,Sonar,subset=s, p = 0.1, hp=0.1)
 bc.snn$testContingencyTable
 
-res <- optimize_p(bc.snn$simil.matrix.prot, bc.snn$y, pInitial=0.1, maxIter = 100)
+res <- optimize_p(bc.snn$simil.matrix.prot, bc.snn$y, pInitial=0.1)
 

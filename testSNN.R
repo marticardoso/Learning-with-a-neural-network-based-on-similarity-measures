@@ -16,13 +16,13 @@ library(mlbench)
 #First we load some useful function for the model selection task
 source('SNN.R')
 s <- sample(nrow(wine),100)
-r1 <- snn(Type~.,wine,subset=s,regularization=FALSE, x=TRUE, p=0.2, hp=0.05, doPOptimization=FALSE)
+r1 <- snn(Type~.,wine,subset=s,regularization=FALSE, x=TRUE, p=0.2, hp=0.05)
 r1$testContingencyTable
 r2 <- snn(Type~.,wine,subset=s,regularization=TRUE)
 r2$testContingencyTable
 
 set.seed(32245)
-r4 <- snn(Type~.,wine,subset=sample(nrow(wine),100),regularization=FALSE, clust.method = "Random", doPOptimization=TRUE)
+r4 <- snn(Type~.,wine,subset=sample(nrow(wine),100),regularization=FALSE, clust.method = "Random", p.control=list(method='CV'))
 r4$testContingencyTable
 
 response = predict(r1,wine,c("response","prob"))
@@ -58,13 +58,13 @@ r4 <- snn.fit(wine[,-1],wine$Type, regularization=FALSE)
 # Numeric output
 set.seed(1234)
 s <- sample(nrow(prostate),60)
-reg.lm <- snn(lpsa~.,prostate,subset=s, regularization=FALSE, hp= 0.05, x=TRUE, y=TRUE)
+reg.lm <- snn(lpsa~.,prostate,subset=s, regularization=FALSE, hp= 0.05, x=TRUE, y=TRUE, p.control=list(method='Opt'))
 reg.lm$testReal
 reg.lm$testResponse-reg.lm$testReal
 reg.lm$mse
 reg.lm$nrmse
 
-reg.ridge <- snn(lpsa~.,prostate,subset=s, regularization=TRUE, hp=0.2, x=TRUE, y=TRUE)
+reg.ridge <- snn(lpsa~.,prostate,subset=s, regularization=TRUE, hp=0.1, x=TRUE, y=TRUE, p.control=list(method='CV'))
 reg.ridge$testReal
 reg.ridge$testResponse-reg.ridge$testReal
 reg.ridge$mse

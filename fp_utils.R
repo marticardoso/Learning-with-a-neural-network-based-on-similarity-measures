@@ -252,9 +252,22 @@ accuracy.multinomial <- function(p, simils, t, model){
 # pToler <- p change tolerance
 # objToler <- objective function change tolerance
 
-optimize_p <- function(x.simils,y, pInitial= NULL, maxIter=100, pToler=1e-6,objFuncToler=1e-6, validation=TRUE, val.subset = NULL,...){
+optimize_p <- function(x.simils,y, pInitial= NULL, control=NULL,...){
   cat('#Optimization of p#\n')
   
+  #Initialize parameters
+  maxIter <- 100
+  pToler <- 1e-6
+  objFuncToler <-1e-6
+  validation <- TRUE
+  val.subset <- NULL
+  if(!is.null(control)){
+    if(!is.null(control$maxIter)) maxIter <- control$maxIter
+    if(!is.null(control$pToler)) pToler <- control$pToler
+    if(!is.null(control$objFuncToler)) objFuncToler <- control$objFuncToler
+    if(!is.null(control$validation)) validation <- control$validation
+    if(!is.null(control$val.subset)) val.subset <- control$val.subset
+  }
   # Set validation and train sets
   if(validation){
     if(is.null(val.subset)){
@@ -530,8 +543,18 @@ optimize_p_test_range_of_values <- function(simils, t, ps = NULL){
 
 
 # Optimize p using k fold cross validation method
-optimize_p_kFoldCV <- function(simils, prototypes, t, ps = NULL,kFolds=10,useAccuracy=FALSE,...){
-  if(is.null(ps)) ps = seq(0.01,2,0.01)
+optimize_p_kFoldCV <- function(simils, prototypes, t, control = NULL,...){
+  
+  # Extract control info
+  ps <- seq(0.01,2,0.01)
+  kFolds <- 10
+  useAccuracy <- FALSE
+  if(!is.null(control)){
+    if(!is.null(control$ps)) ps <- control$ps
+    if(!is.null(control$kFolds)) kFolds <- control$kFolds
+    if(!is.null(control$useAccuracy)) useAccuracy <- control$useAccuracy
+  }
+  
   foldid <- sample(rep(seq(kFolds), length = length(t)))
   
   ps.ObjFunc <- numeric(length(ps))
@@ -563,7 +586,8 @@ optimize_p_kFoldCV <- function(simils, prototypes, t, ps = NULL,kFolds=10,useAcc
   z <- list()
   z$bestP <- ps[which.min(ps.ObjFunc)[1]]
   z$ps <- ps
-  z$ps.E <- ps.ObjFunc
+  z$E <- ps.ObjFunc
+  z$E.sd <- ps.ObjFunc.sd
   z
 }
 
