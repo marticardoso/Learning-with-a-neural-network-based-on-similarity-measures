@@ -252,9 +252,9 @@ accuracy.multinomial <- function(p, simils, t, model){
 # pToler <- p change tolerance
 # objToler <- objective function change tolerance
 
-optimize_p <- function(x.simils,y, pInitial= NULL, control=NULL,...){
+optimize_p <- function(x.simils,y, pInitial= NULL, control=NULL,seed=NULL,...){
   cat('#Optimization of p#\n')
-  
+  if(!is.null(seed)) set.seed(seed)
   #Initialize parameters
   maxIter <- 100
   pToler <- 1e-6
@@ -307,7 +307,7 @@ optimize_p <- function(x.simils,y, pInitial= NULL, control=NULL,...){
     
     # Store evolutions
     ps.evol <- c(ps.evol,newP)
-    E.learn.evol <- c(E.learn.evol, optRes$E)
+    E.learn.evol <- c(E.learn.evol, E.func.from_model(newP, x.simils, y, model))
     if(!is.null(x.simils.val)) E.val.evol <- c(E.val.evol, E.func.from_model(newP, x.simils.val, y.val, model))
     
     # Stopping criteria
@@ -374,7 +374,7 @@ optimize_p_initializeP <- function(x.simils,y, x.simils.val = NULL, y.val = NULL
   for(i in 1:length(pInitials)){
     model <- optimize_p_create_model_given_p(x.simils, y, pInitials[i],...)
     if(!is.null(x.simils.val)) 
-      E.pInitials[i] <- E.func.from_model(pInitials[i], x.simils.val, y.val, model)
+      E.pInitials[i] <- E.func.from_model(pInitials[i], x.simils.val, y.val, model)/var(y.val)*2
     else 
       E.pInitials[i] <- E.func.from_model(pInitials[i], x.simils, y, model)
   }
@@ -459,7 +459,7 @@ optimize_p_given_model <- function(simils, t, model, pInitial = 0.1, simils.val 
     func.val <- function(p) E.func(p, simils.val, t.val, w, isReg, lambda)/var(t)*2
     func2.val <- function(p) accuracyOrNRMSE(p, simils.val,t.val, model)
     
-    grad.val <- function(p) dE.func(p, simils.val, t.val, w)
+    grad.val <- function(p) dE.func(p, simils.val, t.val, w)/var(t)*2
     
     if(!useAccuracy && !useNMSE) ps.E.val <- sapply(gdRes$xtrace, func.val)
     else ps.E.val <- sapply(gdRes$xtrace, func2.val)
@@ -546,7 +546,7 @@ optimize_p_test_range_of_values <- function(simils, t, ps = NULL){
 optimize_p_kFoldCV <- function(simils, prototypes, t, control = NULL,...){
   
   # Extract control info
-  ps <- seq(0.01,2,0.01)
+  ps <- seq(0.1,2,0.1)
   kFolds <- 10
   useAccuracy <- FALSE
   if(!is.null(control)){
