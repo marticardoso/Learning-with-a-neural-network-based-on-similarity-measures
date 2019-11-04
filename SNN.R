@@ -64,7 +64,7 @@ snn <- function (formula, data, subset=NULL, x = TRUE, y = TRUE, ..., trace=TRUE
 }
 
 
-snn.fit <- function (x, y, regularization=FALSE, simil.types=list(),hp=0.1,p=0.1,p.control=NULL,..., trace=TRUE)
+snn.fit <- function (x, y, regularization=FALSE, simil.types=list(),clust.control=NULL,p=0.1,p.control=NULL,..., trace=TRUE)
 {
   if (is.null(n <- nrow(x))) stop("'x' must be a dataframe")
   if (ncol(x) == 0L) stop("Null model")
@@ -75,7 +75,7 @@ snn.fit <- function (x, y, regularization=FALSE, simil.types=list(),hp=0.1,p=0.1
   clust.data <- x.daisy
   
   
-  findclusters.res <- snn.findclusters(clust.data,hp=hp,...)
+  findclusters.res <- snn.findclusters(clust.data,control=clust.control,...)
   id.medoid <- findclusters.res$id.med
   
   prototypes <- x[id.medoid,]
@@ -173,13 +173,31 @@ snn.createRegressionModel <- function(dataframe,regularization=FALSE,..., trace=
 }
 
 #Function to find the clusters
+# - control
+#   - clust.method: method used to find clusters (PAM or Random)
+#   - clust.metric: when PAM, metric used to find the clusters (default: Euclidean)
+#   - clust.stand: when PAM, wheter the data is standarized or not (default false)
+#   - nclust.method: method to find the number of clusters
+#   - hp: hyper-parameter used to find the number of clusters (Estimation of the proportion of clusters)
 snn.findclusters <- function(clust.data,         #Dataset
-                             clust.method = 'PAM', # Clustering method
-                             clust.metric="euclidean", # (PAM)
-                             clust.stand=FALSE,        # (PAM)
+                             control = NULL,
                              ..., trace=TRUE){
+  # Load info from control
+  clust.method <- 'PAM'# Clustering method
+  clust.metric <- "euclidean"
+  clust.stand <- FALSE
+  nclust.method <- 'U'
+  hp <- 0.1
+  if(!is.null(control)) {
+    if(!is.null(control$clust.method)) clust.method <-control$clust.method
+    if(!is.null(control$clust.metric)) clust.metric <- control$clust.metric
+    if(!is.null(control$clust.stand)) clust.stand <- control$clust.stand
+    if(!is.null(control$hp)) hp <- control$hp
+    if(!is.null(control$nclust.method)) nclust.method <- control$nclust.method
+  }
+  
   N <- nrow(as.matrix(clust.data))
-  M <- snn.numberOfClusters(N, ...)
+  M <- snn.numberOfClusters(N, hp=hp, nclust.method=nclust.method, trace=trace)
   
   if(clust.method=="PAM"){
     if(trace) cat("[Clustering] PAM...\n")

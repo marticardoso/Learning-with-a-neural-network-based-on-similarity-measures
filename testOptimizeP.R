@@ -161,12 +161,12 @@ abline(v=ps[which.min(E.ps)[1]], col="blue")
 set.seed(1234)
 data(BostonHousing)
 s <- sample(nrow(BostonHousing),400)
-boss.res <- snn(medv~.,BostonHousing,subset=s, hp=0.05, x=TRUE, y=TRUE)
+boss.res <- snn(medv~.,BostonHousing,subset=s)
 boss.res$mse
 boss.res$nrmse
 
 #Run optimization
-boss.opt <- optimize_p(boss.res$simil.matrix.prot, boss.res$y, hp=0.04, regularization=TRUE)
+boss.opt <- optimize_p(boss.res$simil.matrix.prot, boss.res$y, regularization=TRUE)
 ps <- seq(0.5,2,0.01)
 E.ps <- sapply(ps, function(p) E.func.from_model(p,boss.opt$simils, boss.opt$y, boss.opt$model))
 plot(ps[1:300],E.ps[1:300], type='l')
@@ -265,7 +265,7 @@ summary(BreastCancer)
 BreastCancer$Id <- NULL
 set.seed(1)
 s <- sample(nrow(BreastCancer),500)
-bc.snn <- snn(Class~.,BreastCancer,subset=s, p = 0.1, hp=0.05)
+bc.snn <- snn(Class~.,BreastCancer,subset=s, p = 0.1)
 bc.snn$testContingencyTable
 
 res <- optimize_p(bc.snn$simil.matrix.prot, bc.snn$y)
@@ -287,7 +287,7 @@ opt <- optimize_p_given_model(res$simils, res$y, res$model, res$bestP)
 abline(v=opt$par, col="red")
 
 
-bc.snn <- snn(Class~.,BreastCancer,subset=s, p = 0.1, hp=0.05)
+bc.snn <- snn(Class~.,BreastCancer,subset=s, p = 0.1)
 bc.snn$testContingencyTable
 
 res <- optimize_p(bc.snn$simil.matrix.prot, bc.snn$y, pInitial=0.35)
@@ -297,7 +297,7 @@ data(Sonar)
 summary(Sonar)
 set.seed(1)
 s <- sample(nrow(Sonar),100)
-bc.snn <- snn(Class~.,Sonar,subset=s, p = 0.1, hp=0.1)
+bc.snn <- snn(Class~.,Sonar,subset=s, p = 0.1)
 bc.snn$testContingencyTable
 
 res <- optimize_p(bc.snn$simil.matrix.prot, bc.snn$y, pInitial=0.1)
@@ -309,7 +309,7 @@ ConcreteData <- read.table("datasets/Concrete_Data.csv",header=T, sep=";", dec='
 
 set.seed(1)
 s <- sample(nrow(ConcreteData),floor(nrow(ConcreteData)*2/3))
-r <- snn(CCS~.,ConcreteData,subset=s, p = 0.1, hp=0.1, p.control=list(method='Opt'))
+r <- snn(CCS~.,ConcreteData,subset=s, p = 0.1, p.control=list(method='Opt'))
 r$testReal[1:10]
 r$testResponse[1:10]
 r$nrmse
@@ -319,7 +319,7 @@ AquaticToxicity <- read.table("datasets/qsar_aquatic_toxicity.csv",header=F, sep
 
 set.seed(1234)
 s <- sample(nrow(AquaticToxicity),floor(nrow(AquaticToxicity)*2/3))
-r <- snn(V9~.,AquaticToxicity,subset=s, p = 0.1, hp=0.1, clust.method="R", p.control=list(method="Opt", maxIter=2))
+r <- snn(V9~.,AquaticToxicity,subset=s, p = 0.1, clust.method="R", p.control=list(method="Opt", maxIter=2))
 r$nrmse
 
 summary(lm(V9~.,AquaticToxicity))

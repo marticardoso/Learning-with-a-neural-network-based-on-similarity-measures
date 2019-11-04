@@ -15,9 +15,47 @@ library(mlbench)
 
 #First we load some useful function for the model selection task
 source('SNN.R')
+
+# Example full call
+s <- snn(Type~. 
+         wine, 
+         subset=s, 
+         regularization=FALSE,
+         clust.control=list(
+           clust.method="PAM", 
+           clust.metric="euclidean", 
+           clust.stand=FALSE, 
+           nclust.method="U", 
+           hp =0.1
+         ),
+         p.control=list(
+           method='Opt', # (Opt, CV or G)
+           #Opt fields
+           maxIter= 100,
+           pToler=1e-6,
+           objFuncToler=1e-6,
+           validation=TRUE,
+           val.subset=NULL,
+           #CV fields
+           ps=seq(0.1,2,0.1), #Tested p values
+           kFolds=10, # Number of folds
+           useAccuracy, # Use accuracy to decide
+           #G fields
+           type=1 # type when G method (1 to 5) 
+         ),
+         GD.control=list(
+           eps_f=1e-8,
+           eps_p=1e-5,
+           eps_g=1e-8,
+           alphaMax=1,
+           maxIter=100
+         )
+      )
+
 s <- sample(nrow(wine),100)
-r1 <- snn(Type~.,wine,subset=s,regularization=FALSE, x=TRUE, p=0.2, hp=0.05)
+r1 <- snn(Type~.,wine,subset=s,regularization=FALSE, x=TRUE)
 r1$testContingencyTable
+r1$testAccuracy
 r2 <- snn(Type~.,wine,subset=s,regularization=TRUE)
 r2$testContingencyTable
 
@@ -36,7 +74,7 @@ wine2 <- wine
 wine2$Type <- NULL
 wine2$Type1 <- wine$Type==1
 
-r3 <- snn(Type1~.,wine2,subset=sample(nrow(wine),100), hp=0.1,regularization=FALSE)
+r3 <- snn(Type1~.,wine2,subset=sample(nrow(wine),100), regularization=FALSE)
 r3$testContingencyTable
 pred <- predict(r3,wine2)
 
@@ -58,13 +96,13 @@ r4 <- snn.fit(wine[,-1],wine$Type, regularization=FALSE)
 # Numeric output
 set.seed(1234)
 s <- sample(nrow(prostate),60)
-reg.lm <- snn(lpsa~.,prostate,subset=s, regularization=FALSE, hp= 0.05, x=TRUE, y=TRUE, p.control=list(method='Opt'))
+reg.lm <- snn(lpsa~.,prostate,subset=s, regularization=FALSE, p.control=list(method='Opt'))
 reg.lm$testReal
 reg.lm$testResponse-reg.lm$testReal
 reg.lm$mse
 reg.lm$nrmse
 
-reg.ridge <- snn(lpsa~.,prostate,subset=s, regularization=TRUE, hp=0.1, x=TRUE, y=TRUE, p.control=list(method='CV'))
+reg.ridge <- snn(lpsa~.,prostate,subset=s, regularization=TRUE, p.control=list(method='CV'))
 reg.ridge$testReal
 reg.ridge$testResponse-reg.ridge$testReal
 reg.ridge$mse
@@ -75,13 +113,13 @@ data(BostonHousing)
 dim(BostonHousing)
 
 s <- sample(nrow(BostonHousing),400)
-reg.lm <- snn(medv~.,BostonHousing,subset=s, regularization=FALSE, hp= 0.1, x=TRUE, y=TRUE)
+reg.lm <- snn(medv~.,BostonHousing,subset=s, regularization=FALSE)
 #reg.lm$testReal
 #reg.lm$testResponse-reg.lm$testReal
 reg.lm$mse
 reg.lm$nrmse
 
-reg.ridge <- snn(medv~.,BostonHousing,subset=s, regularization=TRUE, hp=0.05, x=TRUE, y=TRUE)
+reg.ridge <- snn(medv~.,BostonHousing,subset=s, regularization=TRUE)
 reg.ridge$testReal
 #reg.ridge$testResponse-reg.ridge$testReal
 reg.ridge$mse
@@ -97,7 +135,7 @@ pima$Target <- factor(pima$Target, labels=c("No","Yes"))
 Nlearn <- 500
 learn <- 1:Nlearn
 
-pima.glm <- snn(Target~.,pima,subset=learn, hp=0.02)
+pima.glm <- snn(Target~.,pima,subset=learn)
 pima.glm$testContingencyTable
 
 #Preprocessing
@@ -127,11 +165,11 @@ pima[,-9] <- scale(pima[,-9])
 simil.types <- list(ordratio = c("Pregnancies", "Age"))
 
 # Split target and predictors
-pima2.glm <- snn(Target~.,pima,subset=learn, simil.types=simil.types, hp=0.04)
+pima2.glm <- snn(Target~.,pima,subset=learn, simil.types=simil.types)
 pima2.glm$testContingencyTable
 pima2.glm$testAccuracy
 
-pima2.glm <- snn(Target~.,pima,subset=learn, regularization=TRUE, simil.types=simil.types, hp=0.04)
+pima2.glm <- snn(Target~.,pima,subset=learn, regularization=TRUE, simil.types=simil.types)
 pima2.glm$testContingencyTable
 pima2.glm$testAccuracy
 
@@ -148,7 +186,7 @@ data(BreastCancer)
 summary(BreastCancer)
 
 BreastCancer$Id <- NULL
-bc.snn <- snn(Class~.,BreastCancer,subset=sample(nrow(BreastCancer),500), hp=0.05)
+bc.snn <- snn(Class~.,BreastCancer,subset=sample(nrow(BreastCancer),500))
 bc.snn$testContingencyTable
 
 data(DNA)
@@ -158,7 +196,7 @@ summary(DNA)
 data(Glass)
 summary(Glass)
 
-glass.snn <- snn(Type~.,Glass,subset=sample(nrow(Glass),150), hp=0.1)
+glass.snn <- snn(Type~.,Glass,subset=sample(nrow(Glass),150))
 glass.snn$testContingencyTable
 sum(diag(table(predict(glass.snn,Glass, c("response")), Glass$Type)))
 
@@ -170,7 +208,7 @@ sum(diag(table(predict(tmp,Glass), Glass$Type)))
 data(HouseVotes84)
 summary(HouseVotes84)
 
-hv84.snn <- snn(Class~.,HouseVotes84,subset=sample(nrow(HouseVotes84),300), hp=0.05)
+hv84.snn <- snn(Class~.,HouseVotes84,subset=sample(nrow(HouseVotes84),300))
 hv84.snn$testContingencyTable
 
 
