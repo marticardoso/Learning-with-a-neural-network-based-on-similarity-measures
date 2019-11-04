@@ -15,7 +15,7 @@ library(ggplot2)
 # - eps_g <- stop when g(p) < eps_g
 # - maxIter <- Maximum number of iterations
 
-GD <- function(f, g, x= 0.1, control) {
+GD <- function(f, g, x= 0.1, control, trace=FALSE) {
   eps_f <- 1e-8
   eps_p <- 1e-5
   eps_g <- 1e-8
@@ -37,7 +37,7 @@ GD <- function(f, g, x= 0.1, control) {
   for (i in 1:maxIter) {
     
     alpha <- alphaMax
-    cat('Iter',i, ' , x:', x,' alpha=', alpha,' objFunc:',f_x, '\n')
+    if(trace) cat('Iter',i, ' , x:', x,' alpha=', alpha,' objFunc:',f_x, '\n')
     
     while(continue){
       xn <- (x - alpha * g_x)
@@ -47,33 +47,41 @@ GD <- function(f, g, x= 0.1, control) {
           if(f_xn < f_x) break;
       }
       
-      if(alphaMax == alpha) cat('# reducing alpha: ', alpha/2)
-      else cat(' > ', alpha/2)
+      if(trace){
+        if(alphaMax == alpha) cat('# reducing alpha: ', alpha/2)
+        else cat(' > ', alpha/2)
+      }
       
       alpha <- alpha/2
     }
-    if(alpha < alphaMax) cat('\n')
+    if(trace && alpha < alphaMax) cat('\n')
     g_xn <- g(xn)
     
     if(abs(xn - x) < eps_p ) {
-      cat('Break by eps_p\n')
-      cat('# x:', x, 'xn:',xn, '\n')
-      cat('# f:', f_x, 'f(xn):',f_xn, '\n')
-      cat('# g(x):', g_x, 'g(xn):',g_xn,'\n')
+      if(trace){
+        cat('Break by eps_p\n')
+        cat('# x:', x, 'xn:',xn, '\n')
+        cat('# f:', f_x, 'f(xn):',f_xn, '\n')
+        cat('# g(x):', g_x, 'g(xn):',g_xn,'\n')
+      }
       continue <- FALSE
     }
     else if(sign(g_xn)==sign(g_x) && abs(f_x - f_xn) < eps_f ){
-      cat('Break by eps_f\n')
-      cat('# x:', x, 'xn:',xn, '\n')
-      cat('# f:', f_x, 'f(xn):',f_xn, '\n')
-      cat('# g(x):', g_x, 'g(xn):',g_xn,'\n')
+      if(trace){
+        cat('Break by eps_f\n')
+        cat('# x:', x, 'xn:',xn, '\n')
+        cat('# f:', f_x, 'f(xn):',f_xn, '\n')
+        cat('# g(x):', g_x, 'g(xn):',g_xn,'\n')
+      }
       continue <- FALSE
     }
     else if(abs(g_xn) < eps_g ){
-      cat('Break by eps_g\n')
-      cat('# x:', x, 'xn:',xn, '\n')
-      cat('# f:', f_x, 'f(xn):',f_xn, '\n')
-      cat('# g(x):', g_x, 'g(xn):',g_xn,'\n')
+      if(trace){
+        cat('Break by eps_g\n')
+        cat('# x:', x, 'xn:',xn, '\n')
+        cat('# f:', f_x, 'f(xn):',f_xn, '\n')
+        cat('# g(x):', g_x, 'g(xn):',g_xn,'\n')
+      }
       continue <- FALSE
     }
     
@@ -173,15 +181,28 @@ if(FALSE){
   create_plot(gFunc, xs, 'title')
   plot_optimization(gdRes)
   
-  gdRes <- GD(f =  gFunc,g = gGrad, x = 0.3, list(alpha = 0.01, maxIter = 100))
+  gdRes <- GD(f =  gFunc,g = gGrad, x = 0.3, list(alpha = 0.1, maxIter = 100))
   plot_GD_result(gdRes, gFunc,  gFuncVal, title='alpha=0.1')
   
-  gdRes <- GD(f =  gFunc,g = gGrad, x = 0.3, list(alpha = 1, maxIter = 100))
+  gdRes <- GD(f =  gFunc,g = gGrad, x = 0.7, list(alpha = 0.5, maxIter = 100))
   plot_trace(gdRes,gFunc,  gFuncVal, title='Trace plot (alpha 1)')
   plot_GD_result(gdRes, gFunc,  gFuncVal, title='Optimization plot (alpha 1)')
   
-  gdRes <- GD(f =  gFunc,g = gGrad, x = 0.8, list(alpha = 100, maxIter = 100))
+  tic()
+  gdRes <- GD(f =  gFunc,g = gGrad, x = 0.7, list(alpha = 100, maxIter = 100, eps_f=1e-8), trace=FALSE)
+  toc()
   plot_trace(gdRes,gFunc,  gFuncVal, title='Trace plot (alpha 0.1)')
   plot_GD_result(gdRes, gFunc,  gFuncVal)
+  
+  tic()
+  oR <- optim(0.7, gFunc, gGrad, method="BFGS")
+  toc()
+  
+  plot(res$ps.evol,res$E.learn.evol, type='l')
+  plot(res$ps.evol,res$E.learn.evol, type='l')
+  
+  plot(res$E.learn.evol, type='l')
+  plot(res$E.val.evol, type='l', col='blue')
 }
+
 
