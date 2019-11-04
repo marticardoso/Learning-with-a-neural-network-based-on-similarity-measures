@@ -218,7 +218,7 @@ snn.numberOfClusters <- function(N, hp=0.1, nclust.method='C', trace=TRUE){
   else 
     stop(gettextf("Number of clusters method '%s' is not supported. Methods supported: Uniform (U), Binomial (B), Poisson (P) and Constant(C).", nclust.method))
   
-  M <- max(M,1)
+  M <- max(M,2)
   if(trace) cat(" - ", M,"\n")
   M
 }
@@ -276,7 +276,7 @@ predict.snn = function(object, newdata,type=c("response","prob")){
     }
     else{
       response <- apply(prob,1,function(p) object$outputLevels[which.max(p)[1]])
-      test.prob <- apply(prob,1,function(p) max(p))
+      test.prob <- prob #apply(prob,1,function(p) max(p))
     }
     
   }
@@ -289,7 +289,7 @@ predict.snn = function(object, newdata,type=c("response","prob")){
   
   z <-list()
   
-  if("response" %in% type)
+  if("response" %in% type || object$outputType == "numeric")
     z$response <- response
   
   if("prob" %in% type && (object$outputType == "logical" || object$outputType == "factor"))
@@ -300,8 +300,6 @@ predict.snn = function(object, newdata,type=c("response","prob")){
   
   z
 }
-
-
 
 
 
