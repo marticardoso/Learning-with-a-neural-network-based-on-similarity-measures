@@ -252,8 +252,8 @@ accuracy.multinomial <- function(p, simils, t, model){
 # pToler <- p change tolerance
 # objToler <- objective function change tolerance
 
-optimize_p <- function(x.simils,y, pInitial= NULL, control=NULL,seed=NULL,...){
-  cat('#Optimization of p#\n')
+optimize_p <- function(x.simils,y, pInitial= NULL, control=NULL,seed=NULL,..., trace=trace){
+  if(trace) cat('#Optimization of p#\n')
   if(!is.null(seed)) set.seed(seed)
   #Initialize parameters
   maxIter <- 100
@@ -287,22 +287,22 @@ optimize_p <- function(x.simils,y, pInitial= NULL, control=NULL,seed=NULL,...){
   
   # If null, initialize p
   if(is.null(pInitial)){
-    r <- optimize_p_initializeP(x.simils,y, x.simils.val, y.val,...)
+    r <- optimize_p_initializeP(x.simils,y, x.simils.val, y.val,..., trace=trace)
     pInitial <- r$p
   }
-  cat('pInitial = ', pInitial, '\n')
+  if(trace) cat('pInitial = ', pInitial, '\n')
   
   bestP <- pInitial
   bestObjFunc <- 1e50
   iter = 1
   while (iter < maxIter){
     #Step 1
-    model <- optimize_p_create_model_given_p(x.simils, y, bestP,...)
-    print.optimizationLog_step1(iter, bestP, x.simils, y,model, x.simils.val, y.val)
+    model <- optimize_p_create_model_given_p(x.simils, y, bestP,..., trace=trace)
+    print.optimizationLog_step1(iter, bestP, x.simils, y,model, x.simils.val, y.val, trace=trace)
     
     #Step 2
-    optRes <- optimize_p_given_model(x.simils, y, model, bestP, simils.val = x.simils.val, t.val = y.val)
-    print.optimizationLog_step2(iter, optRes,x.simils, y, model, x.simils.val, y.val)
+    optRes <- optimize_p_given_model(x.simils, y, model, bestP, simils.val = x.simils.val, t.val = y.val, trace=trace)
+    print.optimizationLog_step2(iter, optRes,x.simils, y, model, x.simils.val, y.val, trace=trace)
     newP <- optRes$newP
     
     # Store evolutions
@@ -312,9 +312,9 @@ optimize_p <- function(x.simils,y, pInitial= NULL, control=NULL,seed=NULL,...){
     
     # Stopping criteria
     shouldBreak <- FALSE
-    if((abs(bestP-newP) < pToler)){   shouldBreak <- TRUE; cat('Stopping criteria: p tolerance\n') }
-    if((abs(bestObjFunc-optRes$E) < objFuncToler)){   shouldBreak <- TRUE; cat('Stopping criteria: obj func tolerance\n')}
-    if(iter+1 == maxIter) cat('Stopping criteria: maxIterations\n')
+    if((abs(bestP-newP) < pToler)){   shouldBreak <- TRUE; if(trace) cat('Stopping criteria: p tolerance\n') }
+    if((abs(bestObjFunc-optRes$E) < objFuncToler)){   shouldBreak <- TRUE; if(trace) cat('Stopping criteria: obj func tolerance\n')}
+    if(iter+1 == maxIter) if(trace) cat('Stopping criteria: maxIterations\n')
     
     #Update fields
     bestP <- newP
@@ -334,7 +334,8 @@ optimize_p <- function(x.simils,y, pInitial= NULL, control=NULL,seed=NULL,...){
   
 }
 
-print.optimizationLog_step1 <- function(iter, bestP, x.simils, y,model, x.simils.val = NULL, y.val = NULL){
+print.optimizationLog_step1 <- function(iter, bestP, x.simils, y,model, x.simils.val = NULL, y.val = NULL, trace=TRUE){
+  if(!trace) return()
   cat('Iter', iter, '(1) p =', bestP)
   cat(' (E[learn]:',E.func.from_model(bestP, x.simils, y, model))
   if(!is.null(x.simils.val) && !is.null(y.val))
@@ -350,7 +351,8 @@ print.optimizationLog_step1 <- function(iter, bestP, x.simils, y,model, x.simils
   cat(')\n')
 }
 
-print.optimizationLog_step2 <- function(iter, optRes, x.simils, y,model, x.simils.val = NULL, y.val = NULL){
+print.optimizationLog_step2 <- function(iter, optRes, x.simils, y,model, x.simils.val = NULL, y.val = NULL, trace=TRUE){
+  if(!trace) return()
   p <- optRes$newP
   cat('Iter', iter, '(2) p =', p)
   cat(' (E[learn]:',E.func.from_model(p, x.simils, y, model))
@@ -367,12 +369,12 @@ print.optimizationLog_step2 <- function(iter, optRes, x.simils, y,model, x.simil
 }
 
 # Try several initial p, and take the best one.
-optimize_p_initializeP <- function(x.simils,y, x.simils.val = NULL, y.val = NULL,...){
-  cat('Computing pInitial\n')
+optimize_p_initializeP <- function(x.simils,y, x.simils.val = NULL, y.val = NULL,..., trace=trace){
+  if(trace) cat('Computing pInitial\n')
   pInitials <- seq(0.1,2,0.1)
   E.pInitials <- numeric(length(pInitials)) 
   for(i in 1:length(pInitials)){
-    model <- optimize_p_create_model_given_p(x.simils, y, pInitials[i],...)
+    model <- optimize_p_create_model_given_p(x.simils, y, pInitials[i],..., trace=trace)
     if(!is.null(x.simils.val)) 
       E.pInitials[i] <- E.func.from_model(pInitials[i], x.simils.val, y.val, model)/var(y.val)*2
     else 
@@ -404,14 +406,14 @@ mse <- function(residuals) mean(residuals^2)
 
 # Step 1 of method 1:
 # Create a model given a p value (optimize w given a p value)
-optimize_p_create_model_given_p <- function(simils, y, p, ...){
+optimize_p_create_model_given_p <- function(simils, y, p, ..., trace=trace){
   learn.data <- data.frame(apply(simils, c(1,2), function(x) fp(x,p)))
   learn.data$Target <- y
   if(is.factor(y) || is.logical(y)){
-    model <- snn.createClassificationModel(learn.data, p=p, trace=FALSE,...)
+    model <- snn.createClassificationModel(learn.data, p=p, trace=FALSE,..., trace=trace)
   }
   else if(is.numeric(y)){
-    model <- snn.createRegressionModel(learn.data, trace=FALSE,p=p, ...)
+    model <- snn.createRegressionModel(learn.data, trace=FALSE,p=p, ..., trace=trace)
   }
   return(model)
 }
@@ -437,7 +439,7 @@ isRegularization <- function(model){
 # Step 2 of method 1:
 # Function that given a model/w vector, optimize the p value
 optimize_p_given_model <- function(simils, t, model, pInitial = 0.1, simils.val = NULL, t.val = NULL, 
-                                   useNMSE=TRUE, useAccuracy = FALSE, GD.control=NULL){
+                                   useNMSE=TRUE, useAccuracy = FALSE, GD.control=NULL, ..., trace=TRUE){
   w <- extractCoefficients(model)
   isReg <- isRegularization(model)
   lambda <- model$lambda
@@ -448,7 +450,7 @@ optimize_p_given_model <- function(simils, t, model, pInitial = 0.1, simils.val 
   grad <- function(p) dE.func(p, simils, t, w)/var(t)*2
   
   GD.control <- list(alpha=1, maxIter=100)
-  gdRes <- GD(f =  func,g = grad, x = pInitial, control=GD.control)
+  gdRes <- GD(f =  func,g = grad, x = pInitial, control=GD.control,..., trace=trace)
 
   z <- list()
   z$newP <- gdRes$x
@@ -467,7 +469,7 @@ optimize_p_given_model <- function(simils, t, model, pInitial = 0.1, simils.val 
     best.E.id <- which.min(ps.E.val)[1]
     z$p.val <-  gdRes$xtrace[best.E.id]
     z$E.val <- ps.E.val[best.E.id]
-    cat(' new p [train]:',gdRes$x, ' new p [val]:', z$p.val, '\n')
+    if(trace) cat(' new p [train]:',gdRes$x, ' new p [val]:', z$p.val, '\n')
     z$E <- z$E.val
     z$newP <- z$p.val
     
@@ -482,7 +484,7 @@ optimize_p_given_model <- function(simils, t, model, pInitial = 0.1, simils.val 
 
 # Step 2 of method 1:
 # OLD IMPLEMENTATION
-optimize_p_given_model.OLD <- function(simils, t, model, pInitial = 0.1, simils.val = NULL, t.val = NULL, useAccuracy = TRUE){
+optimize_p_given_model.OLD <- function(simils, t, model, pInitial = 0.1, simils.val = NULL, t.val = NULL, useAccuracy = TRUE, trace=TRUE){
   w <- extractCoefficients(model)
   isReg <- isRegularization(model)
   lambda <- model$lambda
@@ -513,7 +515,7 @@ optimize_p_given_model.OLD <- function(simils, t, model, pInitial = 0.1, simils.
     best.E.id <- which.min(ps.E.val)
     z$p.val <-  optimPsEvolution[best.E.id]
     z$E.val <- ps.E.val[best.E.id]
-    cat(' newP:',z$newP, ' newP [val]:', z$p.val, '\n')
+    if(trace) cat(' newP:',z$newP, ' newP [val]:', z$p.val, '\n')
     z$E <- z$E.val
     z$newP <- z$p.val
   }
@@ -543,7 +545,7 @@ optimize_p_test_range_of_values <- function(simils, t, ps = NULL){
 
 
 # Optimize p using k fold cross validation method
-optimize_p_kFoldCV <- function(simils, prototypes, t, control = NULL,...){
+optimize_p_kFoldCV <- function(simils, prototypes, t, control = NULL,..., trace=TRUE){
   
   # Extract control info
   ps <- seq(0.1,2,0.1)
@@ -571,7 +573,7 @@ optimize_p_kFoldCV <- function(simils, prototypes, t, control = NULL,...){
       simils_val <- simils[foldid==k,prototypes]
       t_val <- t[foldid==k]
       
-      model <- optimize_p_create_model_given_p(simils_train,t_train,ps[i],...)
+      model <- optimize_p_create_model_given_p(simils_train,t_train,ps[i],..., trace=trace)
       
       if(!useAccuracy) foldRes[k] <- E.func.from_model(ps[i], simils_val,t_val, model)
       else foldRes[k] <- accuracyOrNRMSE(ps[i], simils_val,t_val, model)
@@ -580,7 +582,7 @@ optimize_p_kFoldCV <- function(simils, prototypes, t, control = NULL,...){
     ps.ObjFunc[i] <- mean(foldRes)
     ps.ObjFunc.sd[i] <- sd(foldRes)
     
-    cat("p= ", ps[i], " - ObjFunc: ", ps.ObjFunc[i], " - sd: ", ps.ObjFunc.sd[i], "\n")
+    if(trace) cat("p= ", ps[i], " - ObjFunc: ", ps.ObjFunc[i], " - sd: ", ps.ObjFunc.sd[i], "\n")
   }
   
   z <- list()
@@ -596,7 +598,7 @@ optimize_p_kFoldCV <- function(simils, prototypes, t, control = NULL,...){
 # Inputs: 
 #   - dissim <- dissimalirity matrix
 #   - pam.res <- result of pam
-optimize_p_method3 <- function(dissim, pam.res, type="avg", ...){
+optimize_p_method3 <- function(dissim, pam.res, type="avg", ..., trace=TRUE){
 
   # Approach 1:
   #  Similar to Calinski-Harabasz index

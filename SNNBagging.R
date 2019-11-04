@@ -6,7 +6,7 @@ snn.bagging <- function (formula, data, subset=NULL, nSNN=10, ..., trace=TRUE )
   if(!is.null(subset) && length(subset) < nrow(data)) data.train <- data[subset,]
   else data.train <- data
   
-  snn.sets <- lapply(1:nSNN, function(i) snn(formula, data.train, trace=FALSE,...))
+  snn.sets <- lapply(1:nSNN, function(i) snn(formula, data.train, ..., trace=trace))
   
   snn.sets.pred <- lapply(1:nSNN, function(i) predict(snn.sets[[i]], data.train, type="prob"))
   
@@ -88,10 +88,10 @@ predict.snn.bagging = function(object, newdata,type=c("response","prob")){
       test.prob <-  predict (object$bagging.model, bagging.ds, type="response")
     if(length(object$outputLevels)==2){
       response <- rep(object$outputLevels[1], length(y))
-      response[prob>=0.5] <- object$outputLevels[2]
+      response[test.prob>=0.5] <- object$outputLevels[2]
     }
     else
-      response <- apply(prob,1,function(p) object$outputLevels[which.max(p)[1]])
+      response <- apply(test.prob,1,function(p) object$outputLevels[which.max(p)[1]])
   }
   else if(object$outputType=="numeric"){
     response <- predict(object$bagging.model, bagging.ds)

@@ -26,7 +26,7 @@ snn <- function (formula, data, subset=NULL, x = TRUE, y = TRUE, ..., trace=TRUE
   y <- model.response(mf)
   x <- data.frame(mf[,-1])
   
-  z <-  snn.fit(x, y, ...)
+  z <-  snn.fit(x, y, ..., trace=trace)
   
   #chkDots(...)
   
@@ -75,18 +75,18 @@ snn.fit <- function (x, y, regularization=FALSE, simil.types=list(),clust.contro
   clust.data <- x.daisy
   
   
-  findclusters.res <- snn.findclusters(clust.data,control=clust.control,...)
+  findclusters.res <- snn.findclusters(clust.data,control=clust.control,..., trace=trace)
   id.medoid <- findclusters.res$id.med
   
   prototypes <- x[id.medoid,]
   
   if(!is.null(p.control)) {
     if(p.control$method=='Opt'){
-      optRes <- optimize_p(x.simils[,id.medoid],y, pInitial= p,method=method,...)
+      optRes <- optimize_p(x.simils[,id.medoid],y, pInitial= p,method=method,..., trace=trace)
       p <- optRes$bestP
     }
     else if(p.control$method=='CV'){
-      optRes <- optimize_p_kFoldCV(x.simils, id.medoid, y, control=p.control,...)
+      optRes <- optimize_p_kFoldCV(x.simils, id.medoid, y, control=p.control,..., trace=trace)
       p <- optRes$bestP
     }
     else if(p.control$method=='G'){
@@ -95,15 +95,15 @@ snn.fit <- function (x, y, regularization=FALSE, simil.types=list(),clust.contro
       else p <- optRes$avg
     }
   }
-  cat('Using p=',p,'\n')
+  if(trace) cat('Using p=',p,'\n')
   learn.data <- data.frame(apply(x.simils[,id.medoid], c(1,2), function(x) fp(x,p)))
   
   learn.data$Target <- y
   
   if(is.factor(y) || is.logical(y))
-    model <- snn.createClassificationModel(learn.data, regularization=regularization,...)
+    model <- snn.createClassificationModel(learn.data, regularization=regularization,..., trace=trace)
   else if(is.numeric(y))
-    model <- snn.createRegressionModel(learn.data, regularization=regularization,...)
+    model <- snn.createRegressionModel(learn.data, regularization=regularization,..., trace=trace)
   else stop("Output type not supported")
   
   z <- list() # Output
@@ -139,11 +139,11 @@ snn.createClassificationModel <- function(dataframe,regularization=FALSE,..., tr
 
   if(!regularization && family.type == "binomial"){
     if(trace) cat("[Classification] Creating glm model...\n")
-    model <- glm (Target~., data=dataframe, family="binomial",control = list(maxit = 100),...)
+    model <- glm (Target~., data=dataframe, family="binomial",control = list(maxit = 100),..., trace=trace)
   }
   else if(!regularization && family.type == "multinomial"){
     if(trace) cat("[Classification] Creating multinom model...\n")
-    model <- multinom (Target~., data=dataframe,trace=FALSE,maxit=500,abstol=1e-6,...)
+    model <- multinom (Target~., data=dataframe,trace=FALSE,maxit=500,abstol=1e-6,..., trace=trace)
   }
   else{
     if(trace) cat("[Classification] Creating ridge model...\n")
