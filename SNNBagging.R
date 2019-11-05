@@ -6,7 +6,10 @@ snn.bagging <- function (formula, data, subset=NULL, nSNN=10, ..., trace=TRUE )
   if(!is.null(subset) && length(subset) < nrow(data)) data.train <- data[subset,]
   else data.train <- data
   
-  snn.sets <- lapply(1:nSNN, function(i) snn(formula, data.train, ..., trace=trace))
+  snn.sets <- lapply(1:nSNN, function(i) {
+    cat('Model ',i,'of',nSNN,'\n') 
+    snn(formula, data.train, ..., trace=trace, clust.control=list(clust.method="R", nclust.method="U"))
+  })
   
   snn.sets.pred <- lapply(1:nSNN, function(i) predict(snn.sets[[i]], data.train, type="prob"))
   

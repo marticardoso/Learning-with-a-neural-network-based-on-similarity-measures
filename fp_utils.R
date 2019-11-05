@@ -297,7 +297,7 @@ optimize_p <- function(x.simils,y, pInitial= NULL, control=NULL,seed=NULL,..., t
   iter = 1
   while (iter < maxIter){
     #Step 1
-    model <- optimize_p_create_model_given_p(x.simils, y, bestP,..., trace=trace)
+    model <- optimize_p_create_model_given_p(x.simils, y, bestP, trace=trace,...)
     print.optimizationLog_step1(iter, bestP, x.simils, y,model, x.simils.val, y.val, trace=trace)
     
     #Step 2
@@ -410,10 +410,10 @@ optimize_p_create_model_given_p <- function(simils, y, p, ..., trace=trace){
   learn.data <- data.frame(apply(simils, c(1,2), function(x) fp(x,p)))
   learn.data$Target <- y
   if(is.factor(y) || is.logical(y)){
-    model <- snn.createClassificationModel(learn.data, p=p, trace=FALSE,..., trace=trace)
+    model <- snn.createClassificationModel(learn.data, p=p, trace=FALSE,...)
   }
   else if(is.numeric(y)){
-    model <- snn.createRegressionModel(learn.data, trace=FALSE,p=p, ..., trace=trace)
+    model <- snn.createRegressionModel(learn.data, trace=FALSE,p=p, ...)
   }
   return(model)
 }

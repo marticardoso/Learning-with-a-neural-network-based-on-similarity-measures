@@ -96,7 +96,7 @@ r4 <- snn.fit(wine[,-1],wine$Type, regularization=FALSE)
 # Numeric output
 set.seed(1234)
 s <- sample(nrow(prostate),60)
-reg.lm <- snn(lpsa~.,prostate,subset=s, regularization=FALSE, p.control=list(method='Opt'))
+reg.lm <- snn(lpsa~.,prostate,subset=s)
 reg.lm$testReal
 reg.lm$testResponse-reg.lm$testReal
 reg.lm$mse
@@ -113,7 +113,7 @@ data(BostonHousing)
 dim(BostonHousing)
 
 s <- sample(nrow(BostonHousing),400)
-reg.lm <- snn(medv~.,BostonHousing,subset=s, regularization=FALSE)
+reg.lm <- snn(medv~.,BostonHousing,subset=s, regularization=FALSE, clust.control=list(clust.method="PAM", nclust.method="C"))
 #reg.lm$testReal
 #reg.lm$testResponse-reg.lm$testReal
 reg.lm$mse

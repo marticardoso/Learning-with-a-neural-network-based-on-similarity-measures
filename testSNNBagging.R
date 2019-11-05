@@ -14,7 +14,7 @@ library(mlbench)
 source('SNNBagging.R')
 acc.ens <- numeric(20)
 s <- sample(nrow(wine),100)
-for(i in 1:2){
+for(i in 1:20){
   r1 <- snn.bagging(Type~.,subset=s,regularization=TRUE, wine, trace=FALSE)
   r1$testContingencyTable
   acc.ens[i] <- r1$testAccuracy
@@ -24,7 +24,7 @@ mean(acc.ens)
 #Test with one SNN
 acc.snn <- numeric(20)
 for(i in 1:20){
-  r1 <- snn(Type~.,wine,subset=s,regularization=TRUE, x=TRUE)
+  r1 <- snn(Type~.,wine,subset=s,x=TRUE)
   acc.snn[i] <- r1$testAccuracy
 }
 

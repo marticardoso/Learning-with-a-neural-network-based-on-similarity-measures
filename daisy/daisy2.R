@@ -170,17 +170,22 @@ daisy2 <- function(x, metric = c("euclidean", "manhattan", "gower"),
   full[!lower.tri(full, diag = TRUE)] <- disv
   disv <- t(full)[lower.tri(full)]
   
+  gDisv <<- disv
+  
   #Apply sqrt/squre if dissimilaries are unbalanced
-  applySqrt <- fixUnbalancedDiss && max(disv)<=0.5
-  applySqure <- fixUnbalancedDiss && min(disv)>= 0.5 
+  
+  disvQ <- quantile(disv, c(0.05,0.95))
+  applySqrt <- fixUnbalancedDiss && disvQ[2]<=0.5
+  applySqure <- fixUnbalancedDiss && disvQ[1]>= 0.5 
   if(applySqrt) {
     disv <- sqrt(disv)
-    cat('Applied sqrt correction')
+    warning('[Daisy2]: Applied sqrt correction')
   }
   if(applySqure) {
     disv <- disv^2
-    cat('Applied square correction')
+    warning('[Daisy2]: Applied square correction')
   }
+  gCDisv <<- disv
   
   ## give warning if some dissimilarities are missimg
   if(anyNA(disv)) attr(disv, "NA.message") <- "NA-values in the dissimilarity matrix !"

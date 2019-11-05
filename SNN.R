@@ -129,7 +129,7 @@ snn.fit <- function (x, y, regularization=FALSE, simil.types=list(),clust.contro
   z
 }
 
-snn.createClassificationModel <- function(dataframe,regularization=FALSE,..., trace=TRUE){
+snn.createClassificationModel <- function(dataframe,regularization=FALSE, ... ,trace=TRUE){
   y <- model.response(model.frame(Target~.,dataframe))
   if(is.logical(y) || (is.factor(y) && nlevels(y)==2))
     family.type <- "binomial"
@@ -143,7 +143,7 @@ snn.createClassificationModel <- function(dataframe,regularization=FALSE,..., tr
   }
   else if(!regularization && family.type == "multinomial"){
     if(trace) cat("[Classification] Creating multinom model...\n")
-    model <- multinom (Target~., data=dataframe,trace=FALSE,maxit=500,abstol=1e-6,..., trace=trace)
+    model <- multinom (Target~., data=dataframe,trace=FALSE,maxit=500,abstol=1e-6,...)
   }
   else{
     if(trace) cat("[Classification] Creating ridge model...\n")
