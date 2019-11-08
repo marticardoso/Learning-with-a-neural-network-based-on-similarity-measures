@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.28307.902
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{DA7A21FA-8162-4350-AD77-A8D1B671F3ED}") = "VSTFMProject", "VSTFMProject.rxproj", "{9FAB5D36-6FF8-4A30-8D11-C133C05B161C}"
+Project("{DA7A21FA-8162-4350-AD77-A8D1B671F3ED}") = "MIRI.TFM", "MIRI.TFM.rxproj", "{ACCFF130-8E1C-45B8-B5BB-B6FF469F18D2}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -11,15 +11,15 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{9FAB5D36-6FF8-4A30-8D11-C133C05B161C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{9FAB5D36-6FF8-4A30-8D11-C133C05B161C}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{9FAB5D36-6FF8-4A30-8D11-C133C05B161C}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{9FAB5D36-6FF8-4A30-8D11-C133C05B161C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{ACCFF130-8E1C-45B8-B5BB-B6FF469F18D2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ACCFF130-8E1C-45B8-B5BB-B6FF469F18D2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ACCFF130-8E1C-45B8-B5BB-B6FF469F18D2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ACCFF130-8E1C-45B8-B5BB-B6FF469F18D2}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {5740AE0B-1680-4250-8981-6406B6500AC4}
+		SolutionGuid = {15617925-B47B-4017-B17B-0878859056ED}
 	EndGlobalSection
 EndGlobal
