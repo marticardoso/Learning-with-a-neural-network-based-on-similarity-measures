@@ -543,6 +543,55 @@ optimize_p_test_range_of_values <- function(simils, t, ps = NULL){
   z
 }
 
+optimize_p_GCV <- function(simils, prototypes, y, control = NULL,regularization=FALSE,..., trace=TRUE){
+  
+  if(!is.numeric(y)) stop("Only regression model supported")
+  
+  
+  ps <- seq(0.1,2,0.1)
+  if(regularization) lambdas <- 10^seq(-5,2,length=50)
+  else lambdas <- c(0)
+  
+  # Extract control info
+  if(!is.null(control)){
+    if(!is.null(control$ps)) ps <- control$ps
+  }
+  
+  
+  ps.ObjFunc <- numeric(length(ps))
+  
+  grid.search <- matrix(0,length(ps), length(lambdas))
+  
+  #Iterate for ps
+  for(i in 1:length(ps)){
+    ds <- data.frame(apply(simils, c(1,2), function(x) fp(x,ps[i])))
+    ds$Target <- y
+
+    
+    r <- lm.ridge(Target~.,ds, lambda = lambdas)
+    grid.search[i,] <- r$GCV
+    
+    lambda.id <- which.min(r$GCV)[1]
+    best.lambda <- lambdas[lambda.id]
+    grid.search[i,] <- r$GCV
+    ps.ObjFunc[i] <- min(r$GCV)
+    
+    if(trace) cat("p= ", ps[i], " - ObjFunc: ", ps.ObjFunc[i], "\n")
+  }
+  
+  z <- list()
+  
+  min.GCV <- which(grid.search == min(grid.search), arr.ind = TRUE)
+  z$bestP <- ps[min.GCV[1]]
+  z$lambda <- lambdas[min.GCV[2]]
+  
+  z$ps <- ps
+  z$lambdas <- lambdas
+  z$GCV <- min(grid.search)
+  z$grid.search <- grid.search
+  z
+}
+
 
 # Optimize p using k fold cross validation method
 optimize_p_kFoldCV <- function(simils, prototypes, t, control = NULL,..., trace=TRUE){
