@@ -1,16 +1,30 @@
 source('SNN.R')
-
-snn.bagging <- function(formula, data, subset = NULL, nSNN = 10, ..., trace = TRUE) {
+library(tictoc)
+snn.bagging <- function(formula, data, subset = NULL, nSNN = 10, simil.types = list(), ..., trace = TRUE) {
   if (!is.null(subset) && length(subset) < nrow(data)) data.train <- data[subset,]
   else data.train <- data
 
+  cat('Computing dissimilarities \n') # Compute similarities before in order to speed up
+
+  data.train.inputs <- model.frame(formula, data.train)[, -1]
+  x.daisy <- daisy2(data.train.inputs, metric = "gower", type=simil.types)
+  fDaisy <<- x.daisy
+
+  cat('Computing Models \n')
+  howManyRows <- function() max(20,ceiling(nrow(data.train) * runif(1) / 2))
+
   snn.sets <- lapply(1:nSNN, function(i) {
-    cat('Model ', i, 'of', nSNN, '\n')
-    snn(formula, data.train, ..., trace = trace, clust.control = list(clust.method = "R", nclust.method = "U"))
+    nrows <- howManyRows()
+    cat('Model ', i, 'of', nSNN, '(', nrows, ' observations) \n')
+    
+    bag.Ids <- sample(1:nrow(data.train))[1:nrows]
+    snn(formula, data.train[bag.Ids,], daisyObj = x.daisy, ..., trace = FALSE, clust.control = list(clust.method = "R", nclust.method = "U"))
   })
 
-  snn.sets.pred <- lapply(1:nSNN, function(i) predict(snn.sets[[i]], data.train, type = "prob"))
-
+  cat('Computing output for all models (Bagging) \n')
+  tic()
+  snn.sets.pred <- lapply(1:nSNN, function(i) predict(snn.sets[[i]], data.train, x.daisy = x.daisy, type = "prob"))
+  toc()
 
   bagging.ds <- data.frame(row.names = row.names(data.train))
   for (snn.i.pred in snn.sets.pred)
@@ -18,6 +32,7 @@ snn.bagging <- function(formula, data, subset = NULL, nSNN = 10, ..., trace = TR
   colnames(bagging.ds) <- 1:ncol(bagging.ds)
   bagging.ds$Target <- model.response(model.frame(formula, data.train))
 
+  cat('Creating lm model (Bagging) \n')
   y <- bagging.ds$Target
   if (is.logical(y) || (is.factor(y) && nlevels(y) == 2))
     model <- glm(Target ~ ., data = bagging.ds, family = "binomial", control = list(maxit = 100))

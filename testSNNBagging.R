@@ -55,3 +55,4 @@ for (i in 1:10) {
   reg.lm <- snn(medv ~ ., BostonHousing, subset = s)
   r.snn[i] <- reg.lm$nrmse
 }
+

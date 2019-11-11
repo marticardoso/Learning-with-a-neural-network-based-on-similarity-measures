@@ -63,12 +63,18 @@ snn <- function(formula, data, subset = NULL, x = TRUE, y = TRUE, ..., trace = T
 }
 
 
-snn.fit <- function(x, y, regularization = FALSE, simil.types = list(), clust.control = NULL, p = 0.1, p.control = NULL, ..., trace = TRUE) {
+snn.fit <- function(x, y, daisyObj = NULL, regularization = FALSE, simil.types = list(), clust.control = NULL, p = 0.1, p.control = NULL, ..., trace = TRUE) {
   if (is.null(n <- nrow(x))) stop("'x' must be a dataframe")
   if (ncol(x) == 0L) stop("Null model")
   ny <- NCOL(y)
 
-  x.daisy <- daisy2(x, metric = "gower", type = simil.types)
+  if (is.null(daisyObj)) {
+    daisyObj <- x.daisy <- daisy2(x, metric = "gower", type = simil.types)
+  }
+  else {
+    cat('Using parameter daisy')
+    x.daisy <- as.matrix(daisyObj)[rownames(x), rownames(x)]
+  }
   x.simils <- 1 - as.matrix(x.daisy)
   clust.data <- x.daisy
 
@@ -113,7 +119,7 @@ snn.fit <- function(x, y, regularization = FALSE, simil.types = list(), clust.co
   z <- list() # Output
   z$model <- model
   z$prototypes <- prototypes
-  z$daisyObj <- attr(x.daisy, "daisyObj")
+  z$daisyObj <- attr(daisyObj, "daisyObj")
   z$p <- p
   z$outputType <- class(y)
   if (class(y) == "factor")
@@ -253,20 +259,23 @@ summary.snn <- function(object) {
   stop("ToDo implementation")
 }
 
-predict.snn = function(object, newdata, type = c("response", "prob")) {
+predict.snn = function(object, newdata, x.daisy=NULL, type = c("response", "prob")) {
   mf <- model.frame(object$formula, newdata)
   x <- mf[, -1]
   y <- model.response(mf)
 
   nprot <- nrow(object$prototypes)
   compute.daisy <- function(newX, prototypes) {
-    diss2prototypes <- sapply(1:nprot, function(prot) {
-      diss <- daisy2.newObservations(rbind(newX, prototypes[prot,]), object$daisyObj)[1]
-      return(diss)
-    })   
-    diss2prototypes
+    diss <- daisy2.newObservations(rbind(newX, prototypes), object$daisyObj)
+    return(as.matrix(diss)[1,-1])
   }
-  x.daisy <- t(sapply(1:nrow(x), function(row) compute.daisy(x[row,], object$prototypes)))
+
+  if (is.null(x.daisy)) {
+    x.daisy <- t(sapply(1:nrow(x), function(row) compute.daisy(x[row,], object$prototypes)))
+  }
+  else {
+    x.daisy <- as.matrix(x.daisy)[rownames(x), rownames(object$prototypes)]
+  }
 
   # newDataAndProt <- rbind(x,object$prototypes)
   # x.daisy <- daisy2.newObservations(newDataAndProt, object$daisyObj)
