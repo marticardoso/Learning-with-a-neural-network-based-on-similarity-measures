@@ -718,12 +718,33 @@ optimize_p_method3 <- function(dissim, pam.res, type="avg", ..., trace=TRUE){
   z
 }
 
+apply.fp <- function(X, p) {
+  n <- nrow(X)
+  m <- ncol(X)
+  a_p <- a(p)
 
+  fp_X <- -p / ((X - 0.5) - a_p) - a_p
+  X_L05 <- X > 0.5
+  fp_X[X_L05] <- -p / ((X[X_L05] - 0.5) + a_p) + a_p + 1
+  return(fp_X)
+}
+
+apply.dfp <- function(X, p) {
+  n <- nrow(X)
+  m <- ncol(X)
+  a_p <- a(p)
+  da_p <- da(p)
+
+  dfp_X <- (-(X - 0.5 - a_p) - p * da_p) / (X - 0.5 - a_p) ^ 2 - da_p
+  X_U05 <- X > 0.5
+  dfp_X[X_U05] <- (-(X[X_U05] - 0.5 + a_p) + p * da_p) / (X[X_U05] - 0.5 + a_p) ^ 2 + da_p
+  return(dfp_X)
+}
 
 opt2.E.regression <- function(p, w, simils, t) {
   if (p <= 0) return(NA)
-  
-  snn.res <- apply(simils, c(1, 2), function(x) fp(x, p))
+  snn.res <- apply.fp(simils, p)
+  #snn.res <- apply(simils, c(1, 2), function(x) fp(x, p))
   snn.res <- cbind(1, snn.res) %*% w
 
   z <- 1 / 2 * (sum((t - snn.res) ^ 2))
@@ -732,29 +753,29 @@ opt2.E.regression <- function(p, w, simils, t) {
 
 opt2.dE.regression <- function(p, w, simils, t) {
   if (p <= 0) return(NA)
-
   simils <- as.matrix(simils)
-  fp_X <- apply(simils, c(1, 2), function(x) fp(x, p))
+  fp_X <- apply.fp(simils, p)
+  #fp_X <- apply(simils, c(1, 2), function(x) fp(x, p))
   snn.res <- cbind(1, fp_X) %*% w
-
   E <- (t - snn.res)
 
   # Compute dsnn : Weights
-
-  dsnn.w <- apply(fp_X, 2, function(r) r * E)
+  dsnn.w <- fp_X * matrix(rep(E, ncol(fp_X)), ncol = ncol(fp_X))
+  #dsnn.w <- apply(fp_X, 2, function(r) r * E) 
   dsnn.w <- as.vector(-colSums(dsnn.w))
-
   dsnn.w0 <- -sum(E)
-
   # Compute dnn : p param
-  dfp_X <- apply(simils, c(1, 2), function(x) dfp(x, p))
+  dfp_X <- apply.dfp(simils, p)
+  #dfp_X <- apply(simils, c(1, 2), function(x) dfp(x, p))
+
   dsnn.p <- dfp_X %*% w[-1] # No intercept
 
   dsnn.p <- -sum(E * dsnn.p)
-
   res <- c(dsnn.w0, dsnn.w, dsnn.p)
+
   return(res)
 }
+
 
 optimize_p_oneOpt <- function(simils, t, pInitial = 0.1, ..., trace = TRUE) {
 
@@ -777,7 +798,6 @@ optimize_p_oneOpt <- function(simils, t, pInitial = 0.1, ..., trace = TRUE) {
   initialValues <- c(numeric(ncol(simils) + 1), pInitial)
 
   res <- optim(initialValues, func, grad, method = "BFGS")
-
   z <- list()
   z$newP <- res$par[length(res$par)]
   z$E <- res$value
