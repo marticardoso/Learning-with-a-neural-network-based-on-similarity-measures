@@ -74,7 +74,7 @@ accuracyOrNRMSE <- function(p, simils, t, model){
 E.regression <- function(p, simils, t, w, reg=FALSE, lambda = 0) {
   if(p<=0) return(NA)
   
-  snn.res <- apply(simils[,names(w[-1])], c(1,2), function(x) fp(x,p))
+  snn.res <- apply(simils, c(1,2), function(x) fp(x,p))
   snn.res <- cbind(1,snn.res) %*% w
   
   z <- 1/2*(sum((t - snn.res)^2))/length(t)
@@ -86,10 +86,10 @@ E.regression <- function(p, simils, t, w, reg=FALSE, lambda = 0) {
 dE.regression <- function(p, simils, t, w) {
   if(p<=0) return(NA)
 
-  snn.res <- apply(simils[,names(w[-1])], c(1,2), function(x) fp(x,p))
+  snn.res <- apply(simils, c(1,2), function(x) fp(x,p))
   snn.res <- cbind(1,snn.res) %*% w
  
-  dsnn.res <- apply(simils[,names(w[-1])], c(1,2), function(x) dfp(x,p))
+  dsnn.res <- apply(simils, c(1,2), function(x) dfp(x,p))
   dsnn.res <- dsnn.res %*% w[-1] # No intercept
   
   res <- -(1/length(t)) *sum((t - snn.res)*dsnn.res)
@@ -136,8 +136,7 @@ dE.binomial <- function(p, simils, t, w){
   nnRes <- sigmoid(X)
   # Compute net derivative
   dX <- apply(simils, c(1,2), function(x) dfp(x,p))
-  wNoInter <- w[-which(names(w) %in% c("(Intercept)"))] # Remove intercept
-  dX <- dX %*% wNoInter # No intercpet
+  dX <- dX %*% w[-1] # No intercpet
   dnnRes <- dsigmoid(X) * dX
   
   z <- class.ind(t) * cbind(-dnnRes/(1-nnRes), dnnRes/nnRes) #z <- t*dnnRes/nnRes - (1-t)*dnnRes/(1-nnRes)
@@ -168,22 +167,31 @@ accuracy.binomial <- function(p, simils, t, model){
 
 E.multinomial <- function(p, simils, t, w, reg=FALSE, lambda = 0){
   if(p<=0) return(NA)
-  
-  X <- apply(simils, c(1,2), function(x) fp(x,p))
+  X <- apply.fp(simils, p)
+  #X <- apply(simils, c(1, 2), function(x) fp(x, p))
   X <- cbind(1, X)
   X <- X %*% t(w)
-  X <- cbind(0,X)
-  nnetRes <- t(apply(X, 1, function(row) {
-    res <- exp(row)/sum(exp(row))
-    # If NaN, take the maximum one. NaN caused by precision
-    if(any(is.nan(res))) res <- as.numeric(row==max(row))/sum(row==max(row))
-    return(res)
-  }))
-  
+  X <- cbind(0, X)
+ 
+  exp_X <- exp(X)
+  nnetRes <- exp_X / matrix(rep(rowSums(exp_X), 3), ncol = 3)
+  # Fix NaN
+  conflictRules <- is.nan(rowSums(nnetRes))
+  if (any(conflictRules)) {
+    nnetRes[conflictRules,] <- t(apply(X[conflictRules,, drop = FALSE], 1, function(row) as.numeric(row == max(row)) / sum(row == max(row))))
+  }
+
+  #nnetRes <- t(apply(X, 1, function(row) { # Optimized in the line above
+  #  res <- exp(row)/sum(exp(row))
+  # If NaN, take the maximum one. NaN caused by precision
+  #  if(any(is.nan(res))) res <- as.numeric(row==max(row))/sum(row==max(row))
+  #  return(res)
+  #}))
+
   #ToDo: fix Na
-  z<-class.ind(t)*ln(nnetRes)
-  z<- -sum(z)/length(t)
-  if(reg) z <- z + 1/2*lambda * (sum(w^2))
+  z <- class.ind(t) * ln(nnetRes)
+  z <- -sum(z) / length(t)
+  if (reg) z <- z + 1 / 2 * lambda * (sum(w ^ 2))
   return(z)
 }
 
@@ -201,25 +209,43 @@ ln <- function(v){
 
 dE.multinomial <- function(p, simils, t, w){
   if(p<=0) return(NA)
- 
-  X <- apply(simils, c(1,2), function(x) fp(x,p))
+  X <- apply.fp(simils, p)
+  # Section optimized in line above
+  #X <- apply(simils, c(1, 2), function(x) fp(x, p))
   X <- cbind(1, X) # Add intercept column
   X <- X %*% t(w) #  w has intercept
   X <- cbind(0,X) # Added base class
-  
-  dX <- apply(simils, c(1,2), function(x) dfp(x,p))
-  wNoInter <- w[,-which(colnames(w) %in% c("(Intercept)"))] # Remove intercept
-  dX <- dX %*% t(wNoInter) # No intercpet
+
+  dX <- apply.dfp(simils, p)
+  # Section optimized in line above
+  #dX <- apply(simils, c(1, 2), function(x) dfp(x, p))
+
+  dX <- dX %*% t(w[, -1]) # No intercpet
   dX <- cbind(0,dX) # First class has 0 derivative
-  
-  nnetRes <- t(apply(X, 1, function(r) exp(r)/sum(exp(r))))
-  
-  dnnetRes <- matrix(0,dim(nnetRes)[1], dim(nnetRes)[2])
-  for(i in 1:nrow(dnnetRes)){
-    dnnetRes[i,] <- (sum(exp(X[i,]))*exp(X[i,])*dX[i,]-exp(X[i,])*sum(exp(X[i,])*dX[i,]))/(sum(exp(X[i,])))^2
+
+  exp_X <- exp(X)
+  nnetRes <- exp_X / matrix(rep(rowSums(exp_X), 3), ncol = 3)
+  # Fix NaN
+  conflictRules <- is.nan(rowSums(nnetRes))
+  if (any(conflictRules)) {
+    nnetRes[conflictRules,] <- t(apply(X[conflictRules,, drop = FALSE], 1, function(row) as.numeric(row == max(row)) / sum(row == max(row))))
   }
+  # Section optimized in line above
+  #nnetRes <- t(apply(X, 1, function(r) exp(r)/sum(exp(r)))) 
+
+  sumRow_exp_X <- matrix(rep(rowSums(exp_X), 3), ncol = 3)
+  sumRow_exp_X_dot_dX <- matrix(rep(rowSums(exp_X * dX), 3), ncol = 3)
+  dnnetRes <- (sumRow_exp_X * exp_X * dX - exp_X * sumRow_exp_X_dot_dX) / sumRow_exp_X ^ 2
+  #Fix nan
+  dnnetRes[is.na(dnnetRes)] <- 0
+  # Section optimized in lines above
+  #dnnetRes <- matrix(0,dim(nnetRes)[1], dim(nnetRes)[2])
+  #for(i in 1:nrow(dnnetRes)){
+  #  dnnetRes[i,] <- (sum(exp_X[i,]) * exp_X[i,] * dX[i,] - exp_X[i,] * sum(exp_X[i,] * dX[i,])) / (sum(exp_X[i,])) ^ 2
+  #}
   
-  z <- class.ind(t)*dnnetRes/nnetRes
+  z <- class.ind(t) * dnnetRes / nnetRes
+
   return(-sum(z)/length(t))
 }
 
@@ -366,7 +392,7 @@ optimize_p_initializeP <- function(x.simils,y, x.simils.val = NULL, y.val = NULL
   for(i in 1:length(pInitials)){
     model <- optimize_p_create_model_given_p(x.simils, y, pInitials[i],..., trace=trace)
     if(!is.null(x.simils.val)) 
-      E.pInitials[i] <- E.func.from_model(pInitials[i], x.simils.val, y.val, model)/var(y.val)*2
+      E.pInitials[i] <- E.func.from_model(pInitials[i], x.simils.val, y.val, model)
     else 
       E.pInitials[i] <- E.func.from_model(pInitials[i], x.simils, y, model)
   }
@@ -435,13 +461,13 @@ optimize_p_given_model <- function(simils, t, model, pInitial = 0.1, simils.val 
   lambda <- model$lambda
   
   #Function to optimize
-  func <- function(p) E.func(p, simils, t, w, isReg, lambda)/var(t)*2
+  func <- function(p) E.func(p, simils, t, w, isReg, lambda)
   #Gradient
-  grad <- function(p) dE.func(p, simils, t, w)/var(t)*2
+  grad <- function(p) dE.func(p, simils, t, w)
 
   if (!is.null(simils.val)) {
     ds.tUv <- rbind(simils, simils.val)
-    t.tUv <- c(t, t.val)
+    t.tUv <- unlist(list(t, t.val))
     func <- function(p) E.func(p, ds.tUv, t.tUv, w, isReg, lambda)
     grad <- function(p) dE.func(p, ds.tUv, t.tUv, w)
   }
