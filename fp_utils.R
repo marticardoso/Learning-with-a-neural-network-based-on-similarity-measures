@@ -85,7 +85,7 @@ E.regression <- function(p, simils, t, w, reg=FALSE, lambda = 0) {
 
 dE.regression <- function(p, simils, t, w) {
   if(p<=0) return(NA)
-  
+
   snn.res <- apply(simils[,names(w[-1])], c(1,2), function(x) fp(x,p))
   snn.res <- cbind(1,snn.res) %*% w
  
@@ -101,9 +101,8 @@ NRMSE.regression <- function(p, simils, t, model){
   if(p<=0) return(NA)
   
   w <- extractCoefficients(model)
-  prototypes <- names(w[-1])
   
-  X <- apply(simils[,prototypes], c(1,2), function(x) fp(x,p))
+  X <- apply(simils, c(1,2), function(x) fp(x,p))
   response <- cbind(1,X) %*% w
   #response <- predict (model, data.frame(X))
   z <- sum((t - response)^2) / ((length(t)-1)*var(t))
@@ -118,9 +117,7 @@ NRMSE.regression <- function(p, simils, t, model){
 E.binomial <- function(p, simils, t, w, reg=FALSE, lambda = 0){
   if(p<=0) return(NA)
   
-  prototypes <- names(w)[-which(names(w) %in% c("(Intercept)"))]
-  
-  X <- apply(simils[,prototypes], c(1,2), function(x) fp(x,p))
+  X <- apply(simils, c(1,2), function(x) fp(x,p))
   X <- cbind(1, X) %*% w
   nnRes <- sigmoid(X)
   
@@ -133,13 +130,12 @@ E.binomial <- function(p, simils, t, w, reg=FALSE, lambda = 0){
 dE.binomial <- function(p, simils, t, w){
   if(p<=0) return(NA)
   
-  prototypes <- names(w)[-which(names(w) %in% c("(Intercept)"))]
   # Compute net result
-  X <- apply(simils[,prototypes], c(1,2), function(x) fp(x,p))
+  X <- apply(simils, c(1,2), function(x) fp(x,p))
   X <- cbind(1, X) %*% w #  w has intercept
   nnRes <- sigmoid(X)
   # Compute net derivative
-  dX <- apply(simils[,prototypes], c(1,2), function(x) dfp(x,p))
+  dX <- apply(simils, c(1,2), function(x) dfp(x,p))
   wNoInter <- w[-which(names(w) %in% c("(Intercept)"))] # Remove intercept
   dX <- dX %*% wNoInter # No intercpet
   dnnRes <- dsigmoid(X) * dX
@@ -158,9 +154,8 @@ accuracy.binomial <- function(p, simils, t, model){
   if(p<=0) return(NA)
   
   w <- extractCoefficients(model)
-  prototypes <- names(w)[-which(names(w) %in% c("(Intercept)"))]
   
-  X <- apply(simils[,prototypes], c(1,2), function(x) fp(x,p))
+  X <- apply(simils, c(1,2), function(x) fp(x,p))
   prob <- predict (model, data.frame(X), type="response")
   response <- prob>=0.5
   tab <- table(Truth=t,Pred=response)
@@ -174,8 +169,7 @@ accuracy.binomial <- function(p, simils, t, model){
 E.multinomial <- function(p, simils, t, w, reg=FALSE, lambda = 0){
   if(p<=0) return(NA)
   
-  prototypes <- colnames(w)[-which(colnames(w) %in% c("(Intercept)"))]
-  X <- apply(simils[,prototypes], c(1,2), function(x) fp(x,p))
+  X <- apply(simils, c(1,2), function(x) fp(x,p))
   X <- cbind(1, X)
   X <- X %*% t(w)
   X <- cbind(0,X)
@@ -207,16 +201,13 @@ ln <- function(v){
 
 dE.multinomial <- function(p, simils, t, w){
   if(p<=0) return(NA)
-  
-  prototypes <- colnames(w)[-which(colnames(w) %in% c("(Intercept)"))]
-  
-  
-  X <- apply(simils[,prototypes], c(1,2), function(x) fp(x,p))
+ 
+  X <- apply(simils, c(1,2), function(x) fp(x,p))
   X <- cbind(1, X) # Add intercept column
   X <- X %*% t(w) #  w has intercept
   X <- cbind(0,X) # Added base class
   
-  dX <- apply(simils[,prototypes], c(1,2), function(x) dfp(x,p))
+  dX <- apply(simils, c(1,2), function(x) dfp(x,p))
   wNoInter <- w[,-which(colnames(w) %in% c("(Intercept)"))] # Remove intercept
   dX <- dX %*% t(wNoInter) # No intercpet
   dX <- cbind(0,dX) # First class has 0 derivative
@@ -236,8 +227,7 @@ accuracy.multinomial <- function(p, simils, t, model){
   if(p<=0) return(NA)
   
   w <- extractCoefficients(model)
-  prototypes <- colnames(w)[-which(colnames(w) %in% c("(Intercept)"))]
-  X <- apply(simils[,prototypes], c(1,2), function(x) fp(x,p))
+  X <- apply(simils, c(1,2), function(x) fp(x,p))
   colnames(X) <- paste('X', colnames(X), sep="")
   response <- predict (model, data.frame(X), type="class")
   tab <- table(Truth=t,Pred=response)
@@ -252,7 +242,7 @@ accuracy.multinomial <- function(p, simils, t, model){
 # pToler <- p change tolerance
 # objToler <- objective function change tolerance
 
-optimize_p <- function(x.simils,y, pInitial= NULL, control=NULL,seed=NULL,..., trace=trace){
+optimize_p <- function(x.simils,y, pInitial= NULL, control=NULL,seed=NULL,..., trace=TRUE){
   if(trace) cat('#Optimization of p#\n')
   if(!is.null(seed)) set.seed(seed)
   #Initialize parameters
@@ -308,7 +298,7 @@ optimize_p <- function(x.simils,y, pInitial= NULL, control=NULL,seed=NULL,..., t
     # Store evolutions
     ps.evol <- c(ps.evol,newP)
     E.learn.evol <- c(E.learn.evol, E.func.from_model(newP, x.simils, y, model))
-    if(!is.null(x.simils.val)) E.val.evol <- c(E.val.evol, E.func.from_model(newP, x.simils.val, y.val, model))
+    if (!is.null(x.simils.val)) E.val.evol <- c(E.val.evol, E.func.from_model(newP, x.simils.val, y.val, model))
     
     # Stopping criteria
     shouldBreak <- FALSE
@@ -337,9 +327,9 @@ optimize_p <- function(x.simils,y, pInitial= NULL, control=NULL,seed=NULL,..., t
 print.optimizationLog_step1 <- function(iter, bestP, x.simils, y,model, x.simils.val = NULL, y.val = NULL, trace=TRUE){
   if(!trace) return()
   cat('Iter', iter, '(1) p =', bestP)
-  cat(' (E[learn]:',E.func.from_model(bestP, x.simils, y, model))
+  cat(' (E[learn]:', E.func.from_model(bestP, x.simils, y, model))
   if(!is.null(x.simils.val) && !is.null(y.val))
-    cat(', E[val]:',E.func.from_model(bestP, x.simils.val, y.val, model))
+    cat(', E[val]:', E.func.from_model(bestP, x.simils.val, y.val, model))
   cat(', model:', getModelObjFunction(model))
   if(is.numeric(y)) accOrNrmseText <- "NRMSE"
   else accOrNrmseText <- "Acc"
@@ -355,9 +345,9 @@ print.optimizationLog_step2 <- function(iter, optRes, x.simils, y,model, x.simil
   if(!trace) return()
   p <- optRes$newP
   cat('Iter', iter, '(2) p =', p)
-  cat(' (E[learn]:',E.func.from_model(p, x.simils, y, model))
+  cat(' (E[learn]:', E.func.from_model(p, x.simils, y, model))
   if(!is.null(x.simils.val) && !is.null(y.val))
-    cat(', E[val]:',E.func.from_model(p, x.simils.val, y.val, model))
+    cat(', E[val]:', E.func.from_model(p, x.simils.val, y.val, model))
   
   cat(', optRes:', optRes$E)
   if(is.numeric(y)) accOrNrmseText <- "NRMSE"
@@ -369,7 +359,7 @@ print.optimizationLog_step2 <- function(iter, optRes, x.simils, y,model, x.simil
 }
 
 # Try several initial p, and take the best one.
-optimize_p_initializeP <- function(x.simils,y, x.simils.val = NULL, y.val = NULL,..., trace=trace){
+optimize_p_initializeP <- function(x.simils,y, x.simils.val = NULL, y.val = NULL,..., trace=TRUE){
   if(trace) cat('Computing pInitial\n')
   pInitials <- seq(0.1,2,0.1)
   E.pInitials <- numeric(length(pInitials)) 
@@ -406,7 +396,7 @@ mse <- function(residuals) mean(residuals^2)
 
 # Step 1 of method 1:
 # Create a model given a p value (optimize w given a p value)
-optimize_p_create_model_given_p <- function(simils, y, p, ..., trace=trace){
+optimize_p_create_model_given_p <- function(simils, y, p, ..., trace=TRUE){
   learn.data <- data.frame(apply(simils, c(1,2), function(x) fp(x,p)))
   learn.data$Target <- y
   if(is.factor(y) || is.logical(y)){
@@ -448,15 +438,21 @@ optimize_p_given_model <- function(simils, t, model, pInitial = 0.1, simils.val 
   func <- function(p) E.func(p, simils, t, w, isReg, lambda)/var(t)*2
   #Gradient
   grad <- function(p) dE.func(p, simils, t, w)/var(t)*2
-  
+
+  if (!is.null(simils.val)) {
+    ds.tUv <- rbind(simils, simils.val)
+    t.tUv <- c(t, t.val)
+    func <- function(p) E.func(p, ds.tUv, t.tUv, w, isReg, lambda)
+    grad <- function(p) dE.func(p, ds.tUv, t.tUv, w)
+  }
   GD.control <- list(alpha=1, maxIter=100)
-  gdRes <- GD(f =  func,g = grad, x = pInitial, control=GD.control,..., trace=trace)
+  gdRes <- GD(f =  func,g = grad, x = pInitial, control=GD.control,..., trace=FALSE)
 
   z <- list()
   z$newP <- gdRes$x
   z$E <- gdRes$fx
   # Test set
-  if(!is.null(simils.val)){
+  if(FALSE && !is.null(simils.val)){
     
     func.val <- function(p) E.func(p, simils.val, t.val, w, isReg, lambda)/var(t)*2
     func2.val <- function(p) accuracyOrNRMSE(p, simils.val,t.val, model)
@@ -543,7 +539,7 @@ optimize_p_test_range_of_values <- function(simils, t, ps = NULL){
   z
 }
 
-optimize_p_GCV <- function(simils, prototypes, y, control = NULL,regularization=FALSE,..., trace=TRUE){
+optimize_p_GCV <- function(simils, y, control = NULL,regularization=FALSE,..., trace=TRUE){
   
   if(!is.numeric(y)) stop("Only regression model supported")
   
@@ -567,7 +563,6 @@ optimize_p_GCV <- function(simils, prototypes, y, control = NULL,regularization=
     ds <- data.frame(apply(simils, c(1,2), function(x) fp(x,ps[i])))
     ds$Target <- y
 
-    
     r <- lm.ridge(Target~.,ds, lambda = lambdas)
     grid.search[i,] <- r$GCV
     
@@ -594,7 +589,7 @@ optimize_p_GCV <- function(simils, prototypes, y, control = NULL,regularization=
 
 
 # Optimize p using k fold cross validation method
-optimize_p_kFoldCV <- function(simils, prototypes, t, control = NULL,..., trace=TRUE){
+optimize_p_kFoldCV <- function(simils, t, control = NULL,..., trace=TRUE){
   
   # Extract control info
   ps <- seq(0.1,2,0.1)
@@ -617,9 +612,9 @@ optimize_p_kFoldCV <- function(simils, prototypes, t, control = NULL,..., trace=
     #Iterate for folds
     for(k in 1:kFolds){
       # Split train-val
-      simils_train <- simils[foldid!=k,prototypes]
+      simils_train <- simils[foldid!=k,]
       t_train <- t[foldid!=k]
-      simils_val <- simils[foldid==k,prototypes]
+      simils_val <- simils[foldid==k,]
       t_val <- t[foldid==k]
       
       model <- optimize_p_create_model_given_p(simils_train,t_train,ps[i],..., trace=trace)
@@ -720,5 +715,71 @@ optimize_p_method3 <- function(dissim, pam.res, type="avg", ..., trace=TRUE){
   z$results <- c(coef1,coef2,coef3,coef4,coef5)
   names(z$results) <- paste('m', 1:(length(z$results)), sep="")
   z$avg <- mean(z$results)
+  z
+}
+
+
+
+opt2.E.regression <- function(p, w, simils, t) {
+  if (p <= 0) return(NA)
+  
+  snn.res <- apply(simils, c(1, 2), function(x) fp(x, p))
+  snn.res <- cbind(1, snn.res) %*% w
+
+  z <- 1 / 2 * (sum((t - snn.res) ^ 2))
+  return(z)
+}
+
+opt2.dE.regression <- function(p, w, simils, t) {
+  if (p <= 0) return(NA)
+
+  simils <- as.matrix(simils)
+  fp_X <- apply(simils, c(1, 2), function(x) fp(x, p))
+  snn.res <- cbind(1, fp_X) %*% w
+
+  E <- (t - snn.res)
+
+  # Compute dsnn : Weights
+
+  dsnn.w <- apply(fp_X, 2, function(r) r * E)
+  dsnn.w <- as.vector(-colSums(dsnn.w))
+
+  dsnn.w0 <- -sum(E)
+
+  # Compute dnn : p param
+  dfp_X <- apply(simils, c(1, 2), function(x) dfp(x, p))
+  dsnn.p <- dfp_X %*% w[-1] # No intercept
+
+  dsnn.p <- -sum(E * dsnn.p)
+
+  res <- c(dsnn.w0, dsnn.w, dsnn.p)
+  return(res)
+}
+
+optimize_p_oneOpt <- function(simils, t, pInitial = 0.1, ..., trace = TRUE) {
+
+  #Function to optimize
+  func <- function(args) {
+    n <- length(args)
+    p <- args[n]
+    w <- args[1:n - 1]
+    opt2.E.regression(p, w, simils, t)
+  }
+
+  #Gradient function
+  grad <- function(args) {
+    n <- length(args)
+    p <- args[n]
+    w <- args[1:n - 1]
+    opt2.dE.regression(p, w, simils, t)
+  }
+
+  initialValues <- c(numeric(ncol(simils) + 1), pInitial)
+
+  res <- optim(initialValues, func, grad, method = "BFGS")
+
+  z <- list()
+  z$newP <- res$par[length(res$par)]
+  z$E <- res$value
   z
 }

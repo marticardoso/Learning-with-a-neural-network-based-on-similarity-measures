@@ -87,16 +87,17 @@ snn.fit <- function(x, y, daisyObj = NULL, regularization = FALSE, simil.types =
   #gMedoids <<- id.medoid
   #gY <<- y
   if (!is.null(p.control)) {
+    if(trace) cat('[Optimization of p] Method: ', p.control$method, '\n')
     if (p.control$method == 'Opt') {
       optRes <- optimize_p(x.simils[, id.medoid], y, pInitial = p, method = method, ..., trace = trace)
       p <- optRes$bestP
     }
     else if (p.control$method == 'CV') {
-      optRes <- optimize_p_kFoldCV(x.simils, id.medoid, y, control = p.control, ..., trace = trace)
+      optRes <- optimize_p_kFoldCV(x.simils[, id.medoid], y, control = p.control, ..., trace = trace)
       p <- optRes$bestP
     }
     else if (p.control$method == 'GCV') {
-      optRes <- optimize_p_GCV(x.simils, id.medoid, y, control = p.control, ..., trace = trace)
+      optRes <- optimize_p_GCV(x.simils[, id.medoid], y, control = p.control, ..., trace = trace)
       p <- optRes$bestP
     }
     else if (p.control$method == 'G') {
@@ -104,6 +105,10 @@ snn.fit <- function(x, y, daisyObj = NULL, regularization = FALSE, simil.types =
       if (is.numeric(optRes)) p <- optRes
       else p <- optRes$avg
       }
+    else if (p.control$method == 'Opt2') {
+      optRes <- optimize_p_oneOpt(x.simils[, id.medoid], y, pInitial = p)
+      p <- optRes$newP
+    }
   }
   if (trace) cat('Using p=', p, '\n')
   learn.data <- data.frame(apply(x.simils[, id.medoid], c(1, 2), function(x) fp(x, p)))

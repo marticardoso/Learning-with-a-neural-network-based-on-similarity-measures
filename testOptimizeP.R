@@ -166,8 +166,8 @@ boss.res$mse
 boss.res$nrmse
 
 #Run optimization
-boss.opt <- optimize_p(boss.res$simil.matrix.prot, boss.res$y, regularization=TRUE)
-ps <- seq(0.5,2,0.01)
+boss.opt <- optimize_p(boss.res$simil.matrix.prot, boss.res$y, regularization=FALSE)
+ps <- seq(0.2,0.4,0.01)
 E.ps <- sapply(ps, function(p) E.func.from_model(p,boss.opt$simils, boss.opt$y, boss.opt$model))
 plot(ps[1:300],E.ps[1:300], type='l')
 dE.ps <- sapply(ps, function(p) dE.func(p,boss.opt$simils, boss.opt$y, extractCoefficients(boss.opt$model) ))
@@ -182,7 +182,7 @@ abline(v=results$ps[which.min(results$ps.E)], col="blue")
 
 
 #K fold cross valiation
-results <- optimize_p_kFoldCV(snn.res$simil.matrix,colnames(snn.res$simil.matrix.prot), snn.res$y,seq(0.01,2,0.01))
+results <- optimize_p_kFoldCV(snn.res$simil.matrix.prot, snn.res$y,seq(0.01,2,0.01))
 plot(results$ps,results$ps.E, type='l')
 abline(v=results$ps[which.min(results$ps.E)], col="blue")
 

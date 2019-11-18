@@ -52,7 +52,8 @@ s <- snn(Type~.
          )
       )
 
-s <- sample(nrow(wine),100)
+s <- sample(nrow(wine), 100)
+set.seed(1234)
 r1 <- snn(Type~.,wine,subset=s,regularization=FALSE, x=TRUE)
 r1$testContingencyTable
 r1$testAccuracy
@@ -113,9 +114,15 @@ data(BostonHousing)
 dim(BostonHousing)
 
 s <- sample(nrow(BostonHousing),400)
-reg.lm <- snn(medv~.,BostonHousing,subset=s, regularization=FALSE, clust.control=list(clust.method="PAM", nclust.method="C"))
-#reg.lm$testReal
-#reg.lm$testResponse-reg.lm$testReal
+reg.lm <- snn(medv ~ ., BostonHousing, subset = s, regularization = FALSE,
+              clust.control = list(clust.method = "PAM", nclust.method = "C"),
+              p.control = list(method = 'CV'))
+reg.lm$mse
+reg.lm$nrmse
+
+reg.lm <- snn(medv ~ ., BostonHousing, subset = s, regularization = FALSE,
+              clust.control = list(clust.method = "PAM", nclust.method = "C"),
+              p.control = list(method = 'Opt2'))
 reg.lm$mse
 reg.lm$nrmse
 
