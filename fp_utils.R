@@ -73,27 +73,20 @@ accuracyOrNRMSE <- function(p, simils, t, model){
 # E function (error) for regression= t - snn(x)
 E.regression <- function(p, simils, t, w, reg=FALSE, lambda = 0) {
   if(p<=0) return(NA)
-  
-  snn.res <- apply(simils, c(1,2), function(x) fp(x,p))
+  snn.res <- apply.fp(simils, p)
   snn.res <- cbind(1,snn.res) %*% w
-  
   z <- 1/2*(sum((t - snn.res)^2))/length(t)
-
   if(reg) z <- z + 1/2*lambda * (sum(w[-1]^2))
   return(z)
 }
 
 dE.regression <- function(p, simils, t, w) {
   if(p<=0) return(NA)
-
-  snn.res <- apply(simils, c(1,2), function(x) fp(x,p))
+  snn.res <- apply.fp(simils, p)
   snn.res <- cbind(1,snn.res) %*% w
- 
-  dsnn.res <- apply(simils, c(1,2), function(x) dfp(x,p))
+  dsnn.res <- apply.dfp(simils, p)
   dsnn.res <- dsnn.res %*% w[-1] # No intercept
-  
   res <- -(1/length(t)) *sum((t - snn.res)*dsnn.res)
-  
   return(res)
 }
 
