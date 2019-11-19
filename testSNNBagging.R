@@ -11,6 +11,7 @@ library(mlbench)
 
 
 #First we load some useful function for the model selection task
+set.seed(123)
 source('SNNBagging.R')
 acc.ens <- numeric(20)
 s <- sample(nrow(wine), 100)
@@ -56,3 +57,6 @@ for (i in 1:10) {
   r.snn[i] <- reg.lm$nrmse
 }
 
+
+r.ens
+r.snn

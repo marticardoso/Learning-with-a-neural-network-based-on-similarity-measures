@@ -23,7 +23,7 @@ snn.bagging <- function(formula, data, subset = NULL, nSNN = 10, simil.types = l
 
   cat('Computing output for all models (Bagging) \n')
   tic()
-  snn.sets.pred <- lapply(1:nSNN, function(i) predict(snn.sets[[i]], data.train, x.daisy = x.daisy, type = "prob"))
+  snn.sets.pred <- lapply(1:nSNN, function(i) predict(snn.sets[[i]], data.train, type = "prob", x.daisy = x.daisy))
   toc()
 
   bagging.ds <- data.frame(row.names = row.names(data.train))

@@ -52,8 +52,9 @@ s <- snn(Type~.
          )
       )
 
+
+set.seed(1235)
 s <- sample(nrow(wine), 100)
-set.seed(1234)
 r1 <- snn(Type~.,wine,subset=s,regularization=FALSE, x=TRUE)
 r1$testContingencyTable
 r1$testAccuracy
@@ -98,14 +99,14 @@ r4 <- snn.fit(wine[,-1],wine$Type, regularization=FALSE)
 set.seed(1234)
 s <- sample(nrow(prostate),60)
 reg.lm <- snn(lpsa~.,prostate,subset=s)
-reg.lm$testReal
-reg.lm$testResponse-reg.lm$testReal
+#reg.lm$testReal
+#reg.lm$testResponse-reg.lm$testReal
 reg.lm$mse
 reg.lm$nrmse
 
 reg.ridge <- snn(lpsa~.,prostate,subset=s, regularization=TRUE, p.control=list(method='CV'))
-reg.ridge$testReal
-reg.ridge$testResponse-reg.ridge$testReal
+#reg.ridge$testReal
+#reg.ridge$testResponse-reg.ridge$testReal
 reg.ridge$mse
 reg.ridge$nrmse
 
@@ -127,7 +128,7 @@ reg.lm$mse
 reg.lm$nrmse
 
 reg.ridge <- snn(medv~.,BostonHousing,subset=s, regularization=TRUE)
-reg.ridge$testReal
+#reg.ridge$testReal
 #reg.ridge$testResponse-reg.ridge$testReal
 reg.ridge$mse
 reg.ridge$nrmse

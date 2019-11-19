@@ -264,7 +264,7 @@ summary.snn <- function(object) {
   stop("ToDo implementation")
 }
 
-predict.snn = function(object, newdata, x.daisy=NULL, type = c("response", "prob")) {
+predict.snn = function(object, newdata, type = c("response", "prob"), x.daisy = NULL,...) {
   mf <- model.frame(object$formula, newdata)
   x <- mf[, -1]
   y <- model.response(mf)
