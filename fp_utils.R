@@ -650,7 +650,7 @@ optimize_p_kFoldCV <- function(simils, t, control = NULL,..., trace=TRUE){
       simils_val <- simils[foldid==k,]
       t_val <- t[foldid==k]
       
-      model <- optimize_p_create_model_given_p(simils_train,t_train,ps[i],..., trace=trace)
+      model <- optimize_p_create_model_given_p(simils_train,t_train,ps[i],trace=trace,...)
       
       if(!useAccuracy) foldRes[k] <- E.func.from_model(ps[i], simils_val,t_val, model)
       else foldRes[k] <- accuracyOrNRMSE(ps[i], simils_val,t_val, model)
@@ -751,17 +751,6 @@ optimize_p_method3 <- function(dissim, pam.res, type="avg", ..., trace=TRUE){
   z
 }
 
-
-
-opt2.E.regression <- function(p, w, simils, t) {
-  if (p <= 0) return(NA)
-  snn.res <- apply.fp(simils, p)
-  snn.res <- cbind(1, snn.res) %*% w
-
-  z <- 1 / 2 * (sum((t - snn.res) ^ 2))
-  return(z)
-}
-
 opt2.dE.regression <- function(p, w, simils, t) {
   if (p <= 0) return(NA)
   simils <- as.matrix(simils)
@@ -779,7 +768,7 @@ opt2.dE.regression <- function(p, w, simils, t) {
   dsnn.p <- dfp_X %*% w[-1] # No intercept
 
   dsnn.p <- -sum(E * dsnn.p)
-  res <- c(dsnn.w0, dsnn.w, dsnn.p)
+  res <- c(dsnn.w0, dsnn.w, dsnn.p) / length(t)
 
   return(res)
 }
@@ -792,7 +781,7 @@ optimize_p_oneOpt <- function(simils, t, pInitial = 0.1, ..., trace = TRUE) {
     n <- length(args)
     p <- args[n]
     w <- args[1:n - 1]
-    opt2.E.regression(p, w, simils, t)
+    E.regression(p=p, simils=simils, t=t, w=w, reg=FALSE)
   }
 
   #Gradient function
