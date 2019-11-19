@@ -116,36 +116,42 @@ NRMSE.regression <- function(p, simils, t, model){
 
 E.binomial <- function(p, simils, t, w, reg=FALSE, lambda = 0){
   if(p<=0) return(NA)
-  
-  X <- apply(simils, c(1,2), function(x) fp(x,p))
+  X <- apply.fp(simils, p)
   X <- cbind(1, X) %*% w
   nnRes <- sigmoid(X)
-  
-  z <- class.ind(t) * ln(cbind(1-nnRes, nnRes)) 
-  z <- -sum(z)/length(t)
+  if (is.logical(t)) isClass2 <- t
+  else isClass2 <- as.numeric(t) == 2
+  z <- numeric(length(t))
+  z[!isClass2] <- ln(1 - nnRes[!isClass2])
+  z[isClass2] <- ln(nnRes[isClass2])
+  #z <- class.ind(t) * ln(cbind(1 - nnRes, nnRes))
+
+  z <- -sum(z) / length(t)
+
   if(reg) z <- z + 1/2*lambda * (sum(w^2))
   return(z)
 }
 
 dE.binomial <- function(p, simils, t, w){
   if(p<=0) return(NA)
-  
   # Compute net result
-  X <- apply(simils, c(1,2), function(x) fp(x,p))
+  X <- apply.fp(simils,p)
   X <- cbind(1, X) %*% w #  w has intercept
   nnRes <- sigmoid(X)
   # Compute net derivative
-  dX <- apply(simils, c(1,2), function(x) dfp(x,p))
+  dX <- apply.dfp(simils, p)
   dX <- dX %*% w[-1] # No intercpet
   dnnRes <- dsigmoid(X) * dX
-  
-  z <- class.ind(t) * cbind(-dnnRes/(1-nnRes), dnnRes/nnRes) #z <- t*dnnRes/nnRes - (1-t)*dnnRes/(1-nnRes)
-  
-  z[(1-nnRes)==0,1] <- 0
-  z[nnRes == 1,  2] <- 0
+  if (is.logical(t)) isClass2 <- t
+  else isClass2 <- as.numeric(t) == 2
+  z <- numeric(length(t))
+  z[!isClass2] <- -dnnRes[!isClass2] / (1 - nnRes[!isClass2])
+  z[ isClass2] <-  dnnRes[ isClass2] / nnRes[isClass2]
+  #z <- class.ind(t) * cbind(-dnnRes/(1-nnRes), dnnRes/nnRes)
+  z[!isClass2 && nnRes == 1] <- 0
+  z[ isClass2 && nnRes == 0] <- 0
   #Fix NaN
   #z[is.nan(z)] <- 0
-  
   return(-sum(z)/length(t))
 }
 
