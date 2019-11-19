@@ -111,7 +111,7 @@ snn.fit <- function(x, y, daisyObj = NULL, regularization = FALSE, simil.types =
     }
   }
   if (trace) cat('Using p=', p, '\n')
-  learn.data <- data.frame(apply(x.simils[, id.medoid], c(1, 2), function(x) fp(x, p)))
+  learn.data <- data.frame(apply.fp(x.simils[, id.medoid], p))
 
   learn.data$Target <- y
 
@@ -287,7 +287,7 @@ predict.snn = function(object, newdata, x.daisy=NULL, type = c("response", "prob
   #x.daisy <- as.matrix(x.daisy)[1:nrow(x), (nrow(x)+1):nrow(newDataAndProt)]
   x.simils <- 1 - x.daisy
 
-  test.x <- data.frame(apply(x.simils, c(1, 2), function(x) fp(x, object$p)))
+  test.x <- data.frame(apply.fp(x.simils, object$p))
   colnames(test.x) <- paste('X', row.names(object$prototypes), sep = "")
 
   if (any(class(object$model) == "glmnet")) # Glmnet does not support data frame

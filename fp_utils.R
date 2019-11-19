@@ -95,7 +95,7 @@ NRMSE.regression <- function(p, simils, t, model){
   
   w <- extractCoefficients(model)
   
-  X <- apply(simils, c(1,2), function(x) fp(x,p))
+  X <- apply.fp(simils, p)
   response <- cbind(1,X) %*% w
   #response <- predict (model, data.frame(X))
   z <- sum((t - response)^2) / ((length(t)-1)*var(t))
@@ -153,7 +153,7 @@ accuracy.binomial <- function(p, simils, t, model){
   
   w <- extractCoefficients(model)
   
-  X <- apply(simils, c(1,2), function(x) fp(x,p))
+  X <- apply.fp(simils, p)
   prob <- predict (model, data.frame(X), type="response")
   response <- prob>=0.5
   tab <- table(Truth=t,Pred=response)
@@ -167,7 +167,6 @@ accuracy.binomial <- function(p, simils, t, model){
 E.multinomial <- function(p, simils, t, w, reg=FALSE, lambda = 0){
   if(p<=0) return(NA)
   X <- apply.fp(simils, p)
-  #X <- apply(simils, c(1, 2), function(x) fp(x, p))
   X <- cbind(1, X)
   X <- X %*% t(w)
   X <- cbind(0, X)
@@ -209,15 +208,11 @@ ln <- function(v){
 dE.multinomial <- function(p, simils, t, w){
   if(p<=0) return(NA)
   X <- apply.fp(simils, p)
-  # Section optimized in line above
-  #X <- apply(simils, c(1, 2), function(x) fp(x, p))
   X <- cbind(1, X) # Add intercept column
   X <- X %*% t(w) #  w has intercept
   X <- cbind(0,X) # Added base class
 
   dX <- apply.dfp(simils, p)
-  # Section optimized in line above
-  #dX <- apply(simils, c(1, 2), function(x) dfp(x, p))
 
   dX <- dX %*% t(w[, -1]) # No intercpet
   dX <- cbind(0,dX) # First class has 0 derivative
@@ -252,7 +247,7 @@ accuracy.multinomial <- function(p, simils, t, model){
   if(p<=0) return(NA)
   
   w <- extractCoefficients(model)
-  X <- apply(simils, c(1,2), function(x) fp(x,p))
+  X <- apply.fp(simils,p)
   colnames(X) <- paste('X', colnames(X), sep="")
   response <- predict (model, data.frame(X), type="class")
   tab <- table(Truth=t,Pred=response)
@@ -422,7 +417,7 @@ mse <- function(residuals) mean(residuals^2)
 # Step 1 of method 1:
 # Create a model given a p value (optimize w given a p value)
 optimize_p_create_model_given_p <- function(simils, y, p, ..., trace=TRUE){
-  learn.data <- data.frame(apply(simils, c(1,2), function(x) fp(x,p)))
+  learn.data <- data.frame(apply.fp(simils, p))
   learn.data$Target <- y
   if(is.factor(y) || is.logical(y)){
     model <- snn.createClassificationModel(learn.data, p=p, trace=FALSE,...)
@@ -585,7 +580,7 @@ optimize_p_GCV <- function(simils, y, control = NULL,regularization=FALSE,..., t
   
   #Iterate for ps
   for(i in 1:length(ps)){
-    ds <- data.frame(apply(simils, c(1,2), function(x) fp(x,ps[i])))
+    ds <- data.frame(apply.fp(simils, ps[i]))
     ds$Target <- y
 
     r <- lm.ridge(Target~.,ds, lambda = lambdas)
@@ -769,7 +764,6 @@ apply.dfp <- function(X, p) {
 opt2.E.regression <- function(p, w, simils, t) {
   if (p <= 0) return(NA)
   snn.res <- apply.fp(simils, p)
-  #snn.res <- apply(simils, c(1, 2), function(x) fp(x, p))
   snn.res <- cbind(1, snn.res) %*% w
 
   z <- 1 / 2 * (sum((t - snn.res) ^ 2))
@@ -780,18 +774,15 @@ opt2.dE.regression <- function(p, w, simils, t) {
   if (p <= 0) return(NA)
   simils <- as.matrix(simils)
   fp_X <- apply.fp(simils, p)
-  #fp_X <- apply(simils, c(1, 2), function(x) fp(x, p))
   snn.res <- cbind(1, fp_X) %*% w
   E <- (t - snn.res)
 
   # Compute dsnn : Weights
   dsnn.w <- fp_X * matrix(rep(E, ncol(fp_X)), ncol = ncol(fp_X))
-  #dsnn.w <- apply(fp_X, 2, function(r) r * E) 
   dsnn.w <- as.vector(-colSums(dsnn.w))
   dsnn.w0 <- -sum(E)
   # Compute dnn : p param
   dfp_X <- apply.dfp(simils, p)
-  #dfp_X <- apply(simils, c(1, 2), function(x) dfp(x, p))
 
   dsnn.p <- dfp_X %*% w[-1] # No intercept
 
