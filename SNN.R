@@ -69,23 +69,20 @@ snn.fit <- function(x, y, daisyObj = NULL, regularization = FALSE, simil.types =
   ny <- NCOL(y)
 
   if (is.null(daisyObj)) {
+    if (trace) cat('[Computing daisy dissimilarity]')
     daisyObj <- x.daisy <- daisy2(x, metric = "gower", type = simil.types)
   }
   else {
-    cat('Using parameter daisy')
     x.daisy <- as.matrix(daisyObj)[rownames(x), rownames(x)]
   }
   x.simils <- 1 - as.matrix(x.daisy)
   clust.data <- x.daisy
 
-
   findclusters.res <- snn.findclusters(clust.data, control = clust.control, ..., trace = trace)
   id.medoid <- findclusters.res$id.med
 
   prototypes <- x[id.medoid,]
-  #gSimils <<- x.simils
-  #gMedoids <<- id.medoid
-  #gY <<- y
+  
   if (!is.null(p.control)) {
     if(trace) cat('[Optimization of p] Method: ', p.control$method, '\n')
     if (p.control$method == 'Opt') {

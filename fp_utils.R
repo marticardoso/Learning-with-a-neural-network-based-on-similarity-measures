@@ -8,7 +8,6 @@ fp <- function(x,p){
   if(x<=0.5) return(-p/((x-0.5)-a(p)) - a(p))
   else       return(-p/((x-0.5)+a(p)) + a(p) + 1)
 }
-
 #Derivates
 da <- function(p) 1/(2*sqrt((1/2)^4 + p))
 dfp <- function(x,p){
@@ -16,89 +15,106 @@ dfp <- function(x,p){
   else       return((-((x-0.5) + a(p)) + p*da(p)) / (x-0.5+a(p))^2 + da(p))
 }
 
-E.func <- function(p, simils, t, w, reg=FALSE,lambda = 0) {
-  if(is.logical(t) ||(is.factor(t)&&nlevels(t)==2))
-    return(E.binomial(p,simils,t,w,reg,lambda))
-  
-  else if(is.factor(t))
-    return(E.multinomial(p,simils,t,w,reg,lambda))
-  
-  else if(is.numeric(t))
-    return(E.regression(p,simils,t,w,reg,lambda))
-  
-  else 
-    stop(gettextf("E func ('%s') is not supported.", class(t)))
+#Apply fp and dfp to a matrix
+apply.fp <- function(X, p) {
+  a_p <- a(p)
+  fp_X <- -p / ((X - 0.5) - a_p) - a_p
+  X_L05 <- X > 0.5
+  fp_X[X_L05] <- -p / ((X[X_L05] - 0.5) + a_p) + a_p + 1
+  return(fp_X)
 }
 
+apply.dfp <- function(X, p) {
+  a_p <- a(p)
+  da_p <- da(p)
+
+  dfp_X <- (-(X - 0.5 - a_p) - p * da_p) / (X - 0.5 - a_p) ^ 2 - da_p
+  X_U05 <- X > 0.5
+  dfp_X[X_U05] <- (-(X[X_U05] - 0.5 + a_p) + p * da_p) / (X[X_U05] - 0.5 + a_p) ^ 2 + da_p
+  return(dfp_X)
+}
+
+E.func <- function(p, simils, t, w, reg = FALSE, lambda = 0) {
+  if (is.logical(t) || (is.factor(t) && nlevels(t) == 2))
+    return(E.binomial(p, simils, t, w, reg, lambda))
+
+  else if (is.factor(t))
+    return(E.multinomial(p, simils, t, w, reg, lambda))
+
+  else if (is.numeric(t))
+    return(E.regression(p, simils, t, w, reg, lambda))
+
+  else
+    stop(gettextf("E func ('%s') is not supported.", class(t)))
+  }
+
 dE.func <- function(p, simils, t, w) {
-  if(is.logical(t)||(is.factor(t)&&nlevels(t)==2))
-    return(dE.binomial(p,simils,t,w))
-  
-  else if(is.factor(t))
-    return(dE.multinomial(p,simils,t,w))
-  
-  else if(is.numeric(t))
-    return(dE.regression(p,simils,t,w))
-  
-  else 
+  if (is.logical(t) || (is.factor(t) && nlevels(t) == 2))
+    return(dE.binomial(p, simils, t, w))
+
+  else if (is.factor(t))
+    return(dE.multinomial(p, simils, t, w))
+
+  else if (is.numeric(t))
+    return(dE.regression(p, simils, t, w))
+
+  else
     stop(gettextf("dE func ('%s') is not supported.", class(t)))
 }
 
 E.func.from_model <- function(p, simils, t, model) {
-  return(E.func(p,simils,t,extractCoefficients(model), isRegularization(model), model$lambda))
+  return(E.func(p, simils, t, extractCoefficients(model), isRegularization(model), model$lambda))
 }
 
 dE.func.from_model <- function(p, simils, t, model) {
-  return(dE.func(p,simils,t,extractCoefficients(model)))
+  return(dE.func(p, simils, t, extractCoefficients(model)))
 }
 
-accuracyOrNRMSE <- function(p, simils, t, model){
-  if(is.logical(t) ||(is.factor(t)&&nlevels(t)==2))
-    return(accuracy.binomial(p,simils,t, model))
-  
-  else if(is.factor(t))
-    return(accuracy.multinomial(p,simils,t,model))
-  
-  else if(is.numeric(t))
-    return(NRMSE.regression(p,simils,t,model))
-  
-  else 
+accuracyOrNRMSE <- function(p, simils, t, model) {
+  if (is.logical(t) || (is.factor(t) && nlevels(t) == 2))
+    return(accuracy.binomial(p, simils, t, model))
+
+  else if (is.factor(t))
+    return(accuracy.multinomial(p, simils, t, model))
+
+  else if (is.numeric(t))
+    return(NRMSE.regression(p, simils, t, model))
+
+  else
     stop(gettextf("accuracy func ('%s') is not supported.", class(t)))
-}
+  }
 
 ################
 # Regression E #
 ################
 
 # E function (error) for regression= t - snn(x)
-E.regression <- function(p, simils, t, w, reg=FALSE, lambda = 0) {
-  if(p<=0) return(NA)
+E.regression <- function(p, simils, t, w, reg = FALSE, lambda = 0) {
+  if (p <= 0) return(NA)
   snn.res <- apply.fp(simils, p)
-  snn.res <- cbind(1,snn.res) %*% w
-  z <- 1/2*(sum((t - snn.res)^2))/length(t)
-  if(reg) z <- z + 1/2*lambda * (sum(w[-1]^2))
+  snn.res <- cbind(1, snn.res) %*% w
+  z <- 1 / 2 * (sum((t - snn.res) ^ 2)) / length(t)
+  if (reg) z <- z + 1 / 2 * lambda * (sum(w[-1] ^ 2))
   return(z)
 }
 
 dE.regression <- function(p, simils, t, w) {
-  if(p<=0) return(NA)
+  if (p <= 0) return(NA)
   snn.res <- apply.fp(simils, p)
-  snn.res <- cbind(1,snn.res) %*% w
+  snn.res <- cbind(1, snn.res) %*% w
   dsnn.res <- apply.dfp(simils, p)
   dsnn.res <- dsnn.res %*% w[-1] # No intercept
-  res <- -(1/length(t)) *sum((t - snn.res)*dsnn.res)
+  res <- -(1 / length(t)) * sum((t - snn.res) * dsnn.res)
   return(res)
 }
 
-NRMSE.regression <- function(p, simils, t, model){
-  if(p<=0) return(NA)
-  
+NRMSE.regression <- function(p, simils, t, model) {
+  if (p <= 0) return(NA)
   w <- extractCoefficients(model)
-  
   X <- apply.fp(simils, p)
-  response <- cbind(1,X) %*% w
+  response <- cbind(1, X) %*% w
   #response <- predict (model, data.frame(X))
-  z <- sum((t - response)^2) / ((length(t)-1)*var(t))
+  z <- sum((t - response) ^ 2) / ((length(t) - 1) * var(t))
   return(z)
 }
 
@@ -107,8 +123,8 @@ NRMSE.regression <- function(p, simils, t, model){
 ##############
 
 
-E.binomial <- function(p, simils, t, w, reg=FALSE, lambda = 0){
-  if(p<=0) return(NA)
+E.binomial <- function(p, simils, t, w, reg = FALSE, lambda = 0) {
+  if (p <= 0) return(NA)
   X <- apply.fp(simils, p)
   X <- cbind(1, X) %*% w
   nnRes <- sigmoid(X)
@@ -120,16 +136,15 @@ E.binomial <- function(p, simils, t, w, reg=FALSE, lambda = 0){
   #z <- class.ind(t) * ln(cbind(1 - nnRes, nnRes))
 
   z <- -sum(z) / length(t)
-
-  if(reg) z <- z + 1/2*lambda * (sum(w^2))
+  if (reg) z <- z + 1 / 2 * lambda * (sum(w ^ 2))
   return(z)
 }
 
-dE.binomial <- function(p, simils, t, w){
-  if(p<=0) return(NA)
+dE.binomial <- function(p, simils, t, w) {
+  if (p <= 0) return(NA)
   # Compute net result
-  X <- apply.fp(simils,p)
-  X <- cbind(1, X) %*% w #  w has intercept
+  X <- apply.fp(simils, p)
+  X <- cbind(1, X) %*% w
   nnRes <- sigmoid(X)
   # Compute net derivative
   dX <- apply.dfp(simils, p)
@@ -139,38 +154,36 @@ dE.binomial <- function(p, simils, t, w){
   else isClass2 <- as.numeric(t) == 2
   z <- numeric(length(t))
   z[!isClass2] <- -dnnRes[!isClass2] / (1 - nnRes[!isClass2])
-  z[ isClass2] <-  dnnRes[ isClass2] / nnRes[isClass2]
+  z[isClass2] <- dnnRes[isClass2] / nnRes[isClass2]
   #z <- class.ind(t) * cbind(-dnnRes/(1-nnRes), dnnRes/nnRes)
   z[!isClass2 && nnRes == 1] <- 0
-  z[ isClass2 && nnRes == 0] <- 0
+  z[isClass2 && nnRes == 0] <- 0
   #Fix NaN
   #z[is.nan(z)] <- 0
-  return(-sum(z)/length(t))
+  return(-sum(z) / length(t))
 }
 
-accuracy.binomial <- function(p, simils, t, model){
-  if(p<=0) return(NA)
-  
+accuracy.binomial <- function(p, simils, t, model) {
+  if (p <= 0) return(NA)
   w <- extractCoefficients(model)
-  
   X <- apply.fp(simils, p)
-  prob <- predict (model, data.frame(X), type="response")
-  response <- prob>=0.5
-  tab <- table(Truth=t,Pred=response)
-  return(sum(diag(tab))/sum(tab))
+  prob <- predict(model, data.frame(X), type = "response")
+  response <- prob >= 0.5
+  tab <- table(Truth = t, Pred = response)
+  return(sum(diag(tab)) / sum(tab))
 }
 
 ##############
 # Multinom E #
 ##############
 
-E.multinomial <- function(p, simils, t, w, reg=FALSE, lambda = 0){
-  if(p<=0) return(NA)
+E.multinomial <- function(p, simils, t, w, reg = FALSE, lambda = 0) {
+  if (p <= 0) return(NA)
   X <- apply.fp(simils, p)
   X <- cbind(1, X)
   X <- X %*% t(w)
   X <- cbind(0, X)
- 
+
   exp_X <- exp(X)
   nnetRes <- exp_X / matrix(rep(rowSums(exp_X), 3), ncol = 3)
   # Fix NaN
@@ -193,29 +206,29 @@ E.multinomial <- function(p, simils, t, w, reg=FALSE, lambda = 0){
   return(z)
 }
 
-ln <- function(v){
+ln <- function(v) {
   z <- v
-  if(is.matrix(v)|| (is.numeric(v) && length(v) > 1)){
-    z[v!=0] <- log(v[v!=0])
+  if (is.matrix(v) || (is.numeric(v) && length(v) > 1)) {
+    z[v != 0] <- log(v[v != 0])
   }
-  else if(is.numeric(v) && length(v) == 1){
-    if(v==0) z <-0
+  else if (is.numeric(v) && length(v) == 1) {
+    if (v == 0) z <- 0
     else z <- log(v)
-  }
+    }
   z
 }
 
-dE.multinomial <- function(p, simils, t, w){
-  if(p<=0) return(NA)
+dE.multinomial <- function(p, simils, t, w) {
+  if (p <= 0) return(NA)
   X <- apply.fp(simils, p)
   X <- cbind(1, X) # Add intercept column
   X <- X %*% t(w) #  w has intercept
-  X <- cbind(0,X) # Added base class
+  X <- cbind(0, X) # Added base class
 
   dX <- apply.dfp(simils, p)
 
   dX <- dX %*% t(w[, -1]) # No intercpet
-  dX <- cbind(0,dX) # First class has 0 derivative
+  dX <- cbind(0, dX) # First class has 0 derivative
 
   exp_X <- exp(X)
   nnetRes <- exp_X / matrix(rep(rowSums(exp_X), 3), ncol = 3)
@@ -237,21 +250,21 @@ dE.multinomial <- function(p, simils, t, w){
   #for(i in 1:nrow(dnnetRes)){
   #  dnnetRes[i,] <- (sum(exp_X[i,]) * exp_X[i,] * dX[i,] - exp_X[i,] * sum(exp_X[i,] * dX[i,])) / (sum(exp_X[i,])) ^ 2
   #}
-  
+
   z <- class.ind(t) * dnnetRes / nnetRes
 
-  return(-sum(z)/length(t))
+  return(-sum(z) / length(t))
 }
 
-accuracy.multinomial <- function(p, simils, t, model){
-  if(p<=0) return(NA)
-  
+accuracy.multinomial <- function(p, simils, t, model) {
+  if (p <= 0) return(NA)
+
   w <- extractCoefficients(model)
-  X <- apply.fp(simils,p)
-  colnames(X) <- paste('X', colnames(X), sep="")
-  response <- predict (model, data.frame(X), type="class")
-  tab <- table(Truth=t,Pred=response)
-  return(sum(diag(tab))/sum(tab))
+  X <- apply.fp(simils, p)
+  colnames(X) <- paste('X', colnames(X), sep = "")
+  response <- predict(model, data.frame(X), type = "class")
+  tab <- table(Truth = t, Pred = response)
+  return(sum(diag(tab)) / sum(tab))
 }
 
 
@@ -738,28 +751,7 @@ optimize_p_method3 <- function(dissim, pam.res, type="avg", ..., trace=TRUE){
   z
 }
 
-apply.fp <- function(X, p) {
-  n <- nrow(X)
-  m <- ncol(X)
-  a_p <- a(p)
 
-  fp_X <- -p / ((X - 0.5) - a_p) - a_p
-  X_L05 <- X > 0.5
-  fp_X[X_L05] <- -p / ((X[X_L05] - 0.5) + a_p) + a_p + 1
-  return(fp_X)
-}
-
-apply.dfp <- function(X, p) {
-  n <- nrow(X)
-  m <- ncol(X)
-  a_p <- a(p)
-  da_p <- da(p)
-
-  dfp_X <- (-(X - 0.5 - a_p) - p * da_p) / (X - 0.5 - a_p) ^ 2 - da_p
-  X_U05 <- X > 0.5
-  dfp_X[X_U05] <- (-(X[X_U05] - 0.5 + a_p) + p * da_p) / (X[X_U05] - 0.5 + a_p) ^ 2 + da_p
-  return(dfp_X)
-}
 
 opt2.E.regression <- function(p, w, simils, t) {
   if (p <= 0) return(NA)
