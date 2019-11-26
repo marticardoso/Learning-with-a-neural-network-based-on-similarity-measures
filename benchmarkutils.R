@@ -5,6 +5,31 @@ milisec <- function(ini=0) {
   return(as.numeric(Sys.time()) * 1000 - ini)
 }
 
+myTic <- function() {
+  currentTime <- milisec()
+  lastTime <<- currentTime
+  currentTime
+}
+
+myToc <- function(ini = NULL, label = NULL, print = TRUE) {
+  currentTime <- milisec()
+  if (is.null(ini)) {
+    elapsedSec <- (currentTime - lastTime) / 1000
+  }
+  else {
+    elapsedSec <- (currentTime - ini) / 1000
+  }
+
+  if (print) {
+    cat(c(round(elapsedSec, 3), 'sec elapsed'))
+    if (!is.null(label)) cat(c(' [', label, ']'), sep = '')
+    cat('\n')
+  }
+  lastTime <<- currentTime
+  currentTime
+}
+
+
 resetTimers <- function() {
   E.s1 <<- 0
   E.s2 <<- 0

@@ -1,17 +1,18 @@
 source('SNN.R')
 source('benchmarkutils.R')
-library(tictoc)
+
 snn.bagging <- function(formula, data, subset = NULL, nSNN = 10, simil.types = list(), regularization = FALSE, snn.reg = FALSE,  ..., trace = TRUE) {
   if (!is.null(subset) && length(subset) < nrow(data)) data.train <- data[subset,]
   else data.train <- data
 
   if(trace) cat('Computing dissimilarities \n') # Compute similarities before in order to speed up
-  ini <- milisec()
+  myTic()
   data.train.inputs <- model.frame(formula, data.train)[, -1]
   y <- model.response(model.frame(formula, data.train))
   x.daisy <- daisy2(data.train.inputs, metric = "gower", type = simil.types)
   fDaisy <<- x.daisy
-  cat(c('Daisy: ', milisec(ini)/1000, 'sec\n'))
+  myToc(label = 'Daisy')
+
   if (trace) cat('Computing Models \n')
   howManyRows <- function() max(50, ceiling(nrow(data.train) * runif(1) / 2))
 
@@ -73,7 +74,7 @@ snn.bagging.fit.second.layer <- function(data.train, y, snn.sets, x.daisy, baggi
   if (trace) cat('Fitting second layer... ')
 
   if (trace) cat('Computing output for all models (Bagging) \n')
-  tic()
+  myTic()
   snn.sets.pred <- lapply(1:length(snn.sets), function(i) predict(snn.sets[[i]], data.train, type = "prob", x.daisy = x.daisy))
 
  
@@ -83,7 +84,7 @@ snn.bagging.fit.second.layer <- function(data.train, y, snn.sets, x.daisy, baggi
     bagging.ds <- cbind(bagging.ds, snn.i.pred)
   colnames(bagging.ds) <- 1:ncol(bagging.ds)
   bagging.ds$Target <- y
-  toc()
+  myToc()
 
   z <- list()
   z$method <- bagging.method
