@@ -1,7 +1,12 @@
 source('SNN.R')
 source('benchmarkutils.R')
 
-snn.bagging <- function(formula, data, subset = NULL, nSNN = 10, simil.types = list(), regularization = FALSE, snn.reg = FALSE,  ..., trace = TRUE) {
+# Trace level
+
+
+snn.bagging <- function(formula, data, subset = NULL, nSNN = 10,
+  simil.types = list(), regularization = FALSE, snn.reg = FALSE,
+  runDaisyOnce = TRUE, ..., trace = TRUE) {
   if (!is.null(subset) && length(subset) < nrow(data)) data.train <- data[subset,]
   else data.train <- data
 
@@ -9,8 +14,14 @@ snn.bagging <- function(formula, data, subset = NULL, nSNN = 10, simil.types = l
   myTic()
   data.train.inputs <- model.frame(formula, data.train)[, -1]
   y <- model.response(model.frame(formula, data.train))
-  x.daisy <- daisy2(data.train.inputs, metric = "gower", type = simil.types)
-  fDaisy <<- x.daisy
+  if (runDaisyOnce) {
+    if(trace) cat('Daisy is computed only once, at the begging!\n')
+    daisyObject <- daisy2(data.train.inputs, metric = "gower", type = simil.types)
+  }
+  else {
+    if(trace) cat('Daisy will be computed in each SNN!\n')
+    daisyObject <- NULL
+  }
   myToc(label = 'Daisy')
 
   if (trace) cat('Computing Models \n')
@@ -18,15 +29,16 @@ snn.bagging <- function(formula, data, subset = NULL, nSNN = 10, simil.types = l
 
   snn.sets <- lapply(1:nSNN, function(i) {
     nrows <- howManyRows()
-    #if(trace) cat('Model ', i, 'of', nSNN, '(', nrows, ' observations) \n')
+    if(trace) cat('Model ', i, 'of', nSNN, '(', nrows, ' observations) \n')
 
     bag.Ids <- sample(1:nrow(data.train))[1:nrows]
-    snn(formula, data.train[bag.Ids,], daisyObj = x.daisy, regularization = snn.reg, ..., trace = FALSE, clust.control = list(clust.method = "R", nclust.method = "U"))
+    snn(formula, data.train[bag.Ids,], daisyObj = daisyObject, regularization = snn.reg, simil.types = simil.types, ...,
+        trace = FALSE, clust.control = list(clust.method = "R", nclust.method = "U"))
   })
 
   
 
-  fit2layer <- snn.bagging.fit.second.layer(data.train, y, snn.sets, x.daisy, regularization = regularization, ..., trace = trace)
+  fit2layer <- snn.bagging.fit.second.layer(data.train, y, snn.sets, daisyObject = daisyObject, regularization = regularization, ..., trace = trace)
 
   z <- list()
   class(z) <- c("snn.bagging")
@@ -69,22 +81,26 @@ snn.bagging <- function(formula, data, subset = NULL, nSNN = 10, simil.types = l
   z
 }
 
-snn.bagging.fit.second.layer <- function(data.train, y, snn.sets, x.daisy, bagging.method = 'B', regularization=FALSE, ..., trace = TRUE) {
+snn.bagging.fit.second.layer <- function(data.train, y, snn.sets, daisyObject, bagging.method = 'B', regularization=FALSE, ..., trace = TRUE) {
 
   if (trace) cat('Fitting second layer... ')
 
   if (trace) cat('Computing output for all models (Bagging) \n')
-  myTic()
-  snn.sets.pred <- lapply(1:length(snn.sets), function(i) predict(snn.sets[[i]], data.train, type = "prob", x.daisy = x.daisy))
+  
+  if (bagging.method == 'B') {
 
- 
+    myTic()
+    snn.sets.pred <- lapply(1:length(snn.sets), function(i) predict(snn.sets[[i]], data.train, type = "prob", daisyObj = daisyObject))
 
-  bagging.ds <- data.frame(row.names = row.names(data.train))
-  for (snn.i.pred in snn.sets.pred)
-    bagging.ds <- cbind(bagging.ds, snn.i.pred)
-  colnames(bagging.ds) <- 1:ncol(bagging.ds)
-  bagging.ds$Target <- y
-  myToc()
+
+
+    bagging.ds <- data.frame(row.names = row.names(data.train))
+    for (snn.i.pred in snn.sets.pred)
+      bagging.ds <- cbind(bagging.ds, snn.i.pred)
+    colnames(bagging.ds) <- 1:ncol(bagging.ds)
+    bagging.ds$Target <- y
+    myToc()
+  }
 
   z <- list()
   z$method <- bagging.method

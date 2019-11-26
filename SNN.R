@@ -261,7 +261,7 @@ summary.snn <- function(object) {
   stop("ToDo implementation")
 }
 
-predict.snn = function(object, newdata, type = c("response", "prob"), x.daisy = NULL,...) {
+predict.snn = function(object, newdata, type = c("response", "prob"), daisyObj = NULL,...) {
   mf <- model.frame(object$formula, newdata)
   x <- mf[, -1]
   y <- model.response(mf)
@@ -272,11 +272,11 @@ predict.snn = function(object, newdata, type = c("response", "prob"), x.daisy = 
     return(as.matrix(diss)[1,-1])
   }
 
-  if (is.null(x.daisy)) {
+  if (is.null(daisyObj)) {
     x.daisy <- t(sapply(1:nrow(x), function(row) compute.daisy(x[row,], object$prototypes)))
   }
   else {
-    x.daisy <- as.matrix(x.daisy)[rownames(x), rownames(object$prototypes)]
+    x.daisy <- as.matrix(daisyObj)[rownames(x), rownames(object$prototypes)]
   }
 
   # newDataAndProt <- rbind(x,object$prototypes)

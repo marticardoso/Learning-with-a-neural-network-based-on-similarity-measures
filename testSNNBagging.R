@@ -22,7 +22,7 @@ s <- sample(nrow(wine), 100)
 
 mult.ensA <- numeric(nRuns)
 for (i in 1:nRuns) {
-  r1 <- snn.bagging(Type ~ ., subset = s, wine,  bagging.method='A')
+  r1 <- snn.bagging(Type ~ ., subset = s, wine, bagging.method = 'A', runDaisyOnce=TRUE)
   mult.ensA[i] <- r1$testAccuracy
 }
 mean(mult.ensA)
@@ -143,3 +143,4 @@ s <- sample(nrow(prostate), 60)
 reg.lm <- snn.bagging(lpsa ~ ., prostate, subset = s, nclust.method = "U", bagging.method = 'A')
 reg.lm$mse
 reg.lm$nrmse
+
