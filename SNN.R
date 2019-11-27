@@ -64,7 +64,10 @@ snn <- function(formula, data, subset = NULL, x = TRUE, y = TRUE, ..., trace = T
 }
 
 
-snn.fit <- function(x, y, daisyObj = NULL, regularization = FALSE, simil.types = list(), clust.control = NULL, p = 0.1, p.control = NULL, ..., trace = TRUE) {
+snn.fit <- function(x, y, daisyObj = NULL,
+                    regularization = FALSE,
+                    standardizeSimils = TRUE,
+                    simil.types = list(), clust.control = NULL, p = 0.1, p.control = NULL, ..., trace = TRUE) {
   if (is.null(n <- nrow(x))) stop("'x' must be a dataframe")
   if (ncol(x) == 0L) stop("Null model")
   ny <- NCOL(y)
@@ -88,9 +91,9 @@ snn.fit <- function(x, y, daisyObj = NULL, regularization = FALSE, simil.types =
   id.medoid <- findclusters.res$id.med
 
   prototypes <- x[id.medoid,]
-  
+
   if (!is.null(p.control)) {
-    if(trace) cat('[Optimization of p] Method: ', p.control$method, '\n')
+    if (trace) cat('[Optimization of p] Method: ', p.control$method, '\n')
     if (p.control$method == 'Opt') {
       optRes <- optimize_p(x.simils[, id.medoid], y, pInitial = p, method = method, ..., trace = trace)
       p <- optRes$bestP
@@ -116,6 +119,12 @@ snn.fit <- function(x, y, daisyObj = NULL, regularization = FALSE, simil.types =
   if (trace) cat('Using p=', p, '\n')
   learn.data <- data.frame(apply.fp(x.simils[, id.medoid], p))
 
+  if (standardizeSimils) {
+    dataScaled <- scale(learn.data)
+    scaled_center <- attr(dataScaled, "scaled:center")
+    scaled_scale <- attr(dataScaled, "scaled:scale")
+    learn.data <- data.frame(dataScaled)
+  }
   learn.data$Target <- y
 
   if (is.factor(y) || is.logical(y))
@@ -125,16 +134,27 @@ snn.fit <- function(x, y, daisyObj = NULL, regularization = FALSE, simil.types =
   else stop("Output type not supported")
 
   z <- list() # Output
-  z$model <- model
-  z$prototypes <- prototypes
+
+  #Problem fields
+  z$outputType <- class(y)
+  if (class(y) == "factor") z$outputLevels <- levels(y)
+
+  #Daisy object
   if (is.dissimilarity(daisyObj)) z$daisyObj <- attr(daisyObj, "daisyObj")
   else z$daisyObj <- daisyObj
-  z$p <- p
-  z$outputType <- class(y)
-  if (class(y) == "factor")
-    z$outputLevels <- levels(y)
+  z$prototypes <- prototypes
 
+  # P field
+  z$p <- p
+
+  # Standarization fields
+  z$standardizeSimils <- standardizeSimils
+  if (standardizeSimils) z$scaled <- list(center = scaled_center, scale = scaled_scale)
+
+  #Model fields
+  z$model <- model
   z$regularization <- regularization
+
   #Debug info
   if (debug) {
     z$clust.data <- clust.data
@@ -293,6 +313,11 @@ predict.snn = function(object, newdata, type = c("response", "prob"), daisyObj =
 
   test.x <- data.frame(apply.fp(x.simils, object$p))
   colnames(test.x) <- paste('X', row.names(object$prototypes), sep = "")
+
+  if (object$standardizeSimils) {
+    dataScaled <- scale(test.x, center = object$scaled$center, scale = object$scaled$scale)
+    test.x <- data.frame(dataScaled)
+  }
 
   if (any(class(object$model) == "glmnet")) # Glmnet does not support data frame
     test.x <- as.matrix(test.x)

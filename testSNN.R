@@ -20,7 +20,8 @@ source('SNN.R')
 s <- snn(Type~. 
          wine, 
          subset=s, 
-         regularization=FALSE,
+         regularization = FALSE,
+         standardizeSimils = TRUE,
          clust.control=list(
            clust.method="PAM", 
            clust.metric="euclidean", 
@@ -53,9 +54,10 @@ s <- snn(Type~.
       )
 
 
-set.seed(1235)
 s <- sample(nrow(wine), 100)
-r1 <- snn(Type~.,wine,subset=s,regularization=FALSE, x=TRUE)
+
+set.seed(1234)
+r1 <- snn(Type ~ ., wine, subset = s, regularization = FALSE, standardizeSimils = TRUE, x = TRUE)
 r1$testContingencyTable
 r1$testAccuracy
 r2 <- snn(Type~.,wine,subset=s,regularization=TRUE)

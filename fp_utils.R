@@ -113,7 +113,6 @@ NRMSE.regression <- function(p, simils, t, model) {
   w <- extractCoefficients(model)
   X <- apply.fp(simils, p)
   response <- cbind(1, X) %*% w
-  #response <- predict (model, data.frame(X))
   z <- sum((t - response) ^ 2) / ((length(t) - 1) * var(t))
   return(z)
 }
