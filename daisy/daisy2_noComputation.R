@@ -3,7 +3,7 @@ dyn.load("daisy/daisy2.dll")
 cl_daisy <-"cldaisy"
 dissiCl <- c("dissimilarity", "dist")
 
-daisy2 <- function(x, metric = c("euclidean", "manhattan", "gower"),
+daisy2_noComputation <- function(x, metric = c("euclidean", "manhattan", "gower"),
                             stand = FALSE, type = list(), weights = rep.int(1, p), fixUnbalancedDiss = TRUE,
                             warnBin = warnType, warnAsym = warnType, warnConst = warnType, warnType = TRUE)
 {
@@ -149,53 +149,12 @@ daisy2 <- function(x, metric = c("euclidean", "manhattan", "gower"),
   }
   ## call Fortran routine
   storage.mode(x) <- "double"
-  disv <- .Fortran(cl_daisy, ## -> ../src/daisy.f
-                   n,
-                   p,
-                   x,
-                   if(mdata) rep(valmisdat, p) else double(1),
-                   as.double(weights),
-                   if(mdata) jtmd else integer(1),
-                   jdat,
-                   type3,		# vtype
-                   ndyst,
-                   as.integer(mdata),
-                   dis = double((n * (n - 1))/2),
-                   NAOK = TRUE# only to allow "+- Inf"
-  )$dis
-  ## adapt Fortran output to S:
-  ## convert lower matrix, read by rows, to upper matrix, read by rows.
-  disv[disv == -1] <- NA
-  full <- matrix(0, n, n)
-  full[!lower.tri(full, diag = TRUE)] <- disv
-  disv <- t(full)[lower.tri(full)]
   
-  #gDisv <<- disv
   
   #Apply sqrt/squre if dissimilaries are unbalanced
   
-  disvQ <- quantile(disv, c(0.05,0.95))
-  applySqrt <- fixUnbalancedDiss && disvQ[2]<=0.5
-  applySqure <- fixUnbalancedDiss && disvQ[1]>= 0.5 
-  if(applySqrt) {
-    disv <- sqrt(disv)
-    warning('[Daisy2]: Applied sqrt correction')
-  }
-  if(applySqure) {
-    disv <- disv^2
-    warning('[Daisy2]: Applied square correction')
-  }
-  #gCDisv <<- disv
-  
-  ## give warning if some dissimilarities are missimg
-  if(anyNA(disv)) attr(disv, "NA.message") <- "NA-values in the dissimilarity matrix !"
-  
-  ## construct S object -- "dist" methods are *there* !
-  class(disv) <- dissiCl # see ./0aaa.R
-  attr(disv, "Labels") <- dimnames(x)[[1]]
-  attr(disv, "Size") <- n
-  attr(disv, "Metric") <- if(!ndyst) "mixed" else metric
-  if(!ndyst) attr(disv, "Types") <- typeCodes[type3]
+  applySqrt <- FALSE
+  applySqure <- FALSE
   
   #Return daisy object fields to recompute dissimilarities
   z = list()
@@ -214,11 +173,6 @@ daisy2 <- function(x, metric = c("euclidean", "manhattan", "gower"),
   if(exists("ordRatioLevels")) z$ordRatioLevels <- ordRatioLevels
   z$applySqrt <- applySqrt
   z$applySqure <- applySqure
-  attr(disv, "daisyObj") <- z
-  
-  disv
-}
-
-is.dissimilarity <- function(obj) {
-  any(class(obj) == "dissimilarity")
+  class('')
+  z
 }

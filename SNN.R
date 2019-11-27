@@ -6,6 +6,7 @@ library(MASS)
 source("fp_utils.R")
 source("daisy/daisy2.R")
 source("daisy/daisy2Predict.R")
+source("daisy/daisy2_noComputation.R")
 debug = TRUE
 
 snn <- function(formula, data, subset = NULL, x = TRUE, y = TRUE, ..., trace = TRUE) {
@@ -72,8 +73,13 @@ snn.fit <- function(x, y, daisyObj = NULL, regularization = FALSE, simil.types =
     if (trace) cat('[Computing daisy dissimilarity]')
     daisyObj <- x.daisy <- daisy2(x, metric = "gower", type = simil.types)
   }
-  else {
+  else if (is.dissimilarity(daisyObj)) {
+    if (trace) cat('[dissimilarity passed as parameter]')
     x.daisy <- as.matrix(daisyObj)[rownames(x), rownames(x)]
+  }
+  else {
+    if (trace) cat('[Computing daisy dissimilarity (using global sx)]')
+    x.daisy <- daisy2.newObservations(x, daisyObj)
   }
   x.simils <- 1 - as.matrix(x.daisy)
   clust.data <- x.daisy
@@ -121,7 +127,8 @@ snn.fit <- function(x, y, daisyObj = NULL, regularization = FALSE, simil.types =
   z <- list() # Output
   z$model <- model
   z$prototypes <- prototypes
-  z$daisyObj <- attr(daisyObj, "daisyObj")
+  if (is.dissimilarity(daisyObj)) z$daisyObj <- attr(daisyObj, "daisyObj")
+  else z$daisyObj <- daisyObj
   z$p <- p
   z$outputType <- class(y)
   if (class(y) == "factor")
@@ -272,7 +279,7 @@ predict.snn = function(object, newdata, type = c("response", "prob"), daisyObj =
     return(as.matrix(diss)[1,-1])
   }
 
-  if (is.null(daisyObj)) {
+  if (is.null(daisyObj) || !is.dissimilarity(daisyObj)) {
     x.daisy <- t(sapply(1:nrow(x), function(row) compute.daisy(x[row,], object$prototypes)))
   }
   else {
@@ -331,3 +338,4 @@ predict.snn = function(object, newdata, type = c("response", "prob"), daisyObj =
 
   z
 }
+

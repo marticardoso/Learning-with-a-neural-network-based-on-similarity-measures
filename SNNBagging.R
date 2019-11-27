@@ -6,7 +6,9 @@ source('benchmarkutils.R')
 
 snn.bagging <- function(formula, data, subset = NULL, nSNN = 10,
   simil.types = list(), regularization = FALSE, snn.reg = FALSE,
-  runDaisyOnce = TRUE, ..., trace = TRUE) {
+  runDaisyOnce = TRUE,
+  useGlobalDaisyTransformations = TRUE,
+  ..., trace = TRUE) {
   if (!is.null(subset) && length(subset) < nrow(data)) data.train <- data[subset,]
   else data.train <- data
 
@@ -17,6 +19,10 @@ snn.bagging <- function(formula, data, subset = NULL, nSNN = 10,
   if (runDaisyOnce) {
     if(trace) cat('Daisy is computed only once, at the begging!\n')
     daisyObject <- daisy2(data.train.inputs, metric = "gower", type = simil.types)
+  }
+  else if (useGlobalDaisyTransformations) {
+    if (trace) cat('Daisy will be computed in each SNN! (but sx and min computed at bagging)\n')
+    daisyObject <- daisy2_noComputation(data.train.inputs, metric = "gower", type = simil.types)
   }
   else {
     if(trace) cat('Daisy will be computed in each SNN!\n')

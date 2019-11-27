@@ -99,6 +99,8 @@ daisy2.newObservations <- function(x, daisyObj)
   class(disv) <- dissiCl 
   attr(disv, "Size") <- n
   attr(disv, "Metric") <- daisyObj$metric
-  
+  attr(disv, "Labels") <- dimnames(x)[[1]]
+  if (!daisyObj$ndyst) attr(disv, "Types") <- typeCodes[daisyObj$type3]
+
   disv
 }
