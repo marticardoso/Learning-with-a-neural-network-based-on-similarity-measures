@@ -143,9 +143,12 @@ snn.fit <- function(x, y, daisyObj = NULL,
   if (is.dissimilarity(daisyObj)) z$daisyObj <- attr(daisyObj, "daisyObj")
   else z$daisyObj <- daisyObj
   z$prototypes <- prototypes
-
+  z$clust.method <- findclusters.res$clust.method
+  z$nclust.method <- findclusters.res$nclust.method
+  z$hp <- findclusters.res$hp
   # P field
   z$p <- p
+  z$pmethod <- p.control$method
 
   # Standarization fields
   z$standardizeSimils <- standardizeSimils
@@ -240,16 +243,21 @@ snn.findclusters <- function(clust.data, #Dataset
 
   if (clust.method == "PAM") {
     if (trace) cat("[Clustering] PAM...\n")
-    dataset.pam <- pam(clust.data, k = M, metric = clust.metric, stand = clust.stand, diss = TRUE, keep.diss = FALSE, keep.data = FALSE)
-    return(dataset.pam)
+    z <- pam(clust.data, k = M, metric = clust.metric, stand = clust.stand, diss = TRUE, keep.diss = FALSE, keep.data = FALSE)
   }
   else if (clust.method == "R" || clust.method == "Random") {
     if (trace) cat("[Clustering] Random\n")
-    return(list(id.med = sample(1:N, M)))
+    z <- list(id.med = sample(1:N, M))
   }
   else
     stop(gettextf("Clustering method '%s' is not supported. Supported methods: PAM and Random.", clust.method))
-  }
+
+
+  z$clust.method <- clust.method
+  z$nclust.method <- nclust.method
+  z$hp <- hp
+  return(z)
+}
 
 # Method to find the number of clusters
 # hp <- Estimation of the proportion of clusters.
@@ -280,12 +288,54 @@ snn.numberOfClusters <- function(N, hp = 0.1, nclust.method = 'C', trace = TRUE)
   M
 }
 
-print.snn <- function(x, digits = max(3L, getOption("digits") - 3L), ...) {
-  stop("ToDo implementation")
+print.snn <- function(object, digits = max(3L, getOption("digits") - 3L), ...) {
+  cat(c('A ', ncol(object$prototypes), '-', nrow(object$prototypes), '-'), sep = '')
+  if (object$outputType == "factor" && length(object$outputLevels) > 2) cat(length(object$outputLevels))
+  else cat('1')
+  cat(' snn network\n')
+
+  if (NCOL(object$prototypes) < 15) cat(c('Inputs: ', colnames(object$prototypes), '\n'))
+  cat('formula: ')
+  print(object$formula)
+
+  cat(c('prototypes:', row.names(object$prototypes), '\n'))
+
+
+  cat('options were: \n')
+  ind <- '    '
+  cat(ind, '#clusters: ')
+  if (object$nclust.method == "U" || object$nclust.method == "Uniform") cat("Uniform")
+  else if (object$nclust.method == "B" || object$nclust.method == "Binomial") cat("Binomial")
+  else if (object$nclust.method == "P" || object$nclust.method == "Poisson") cat("Poisson")
+  else if (object$nclust.method == "C" || object$nclust.method == "Constant") cat("Constant")
+  cat(c(' (hp: ', object$hp, ', # ',nrow(object$prototypes), ')\n'), sep = '')
+  cat(c(ind, 'clustering:', ifelse(object$clust.method == 'PAM', 'PAM', 'Random'), '\n'))
+  cat(c(ind, 'p:', object$p))
+  if (!is.null(object$pmethod)) cat(c(' (method: ', object$pmethod, ')'), sep = '')
+  cat('\n')
+  cat(c(ind, 'standarization:', ifelse(object$standardizeSimils, 'YES', 'NO'), '\n'))
+  cat(c(ind, 'model:', class(object$model), '\n'))
+  cat(c(ind, 'regularization:', ifelse(object$regularization, 'YES', 'NO'), '\n'))
 }
 
 summary.snn <- function(object) {
-  stop("ToDo implementation")
+  ind <- '    '
+  cat('--- SNN Summary ---\n')
+  print(object)
+
+  if (!is.null(object$testResponse)) {
+    cat('\n--- TEST RESULTS ---\n')
+    if (!is.null(object$testAccuracy)) {
+      cat(c(ind, 'Accuracy:', round(object$testAccuracy, 3), '\n'))
+      cat(c(ind, 'Contingency table:\n'))
+      print(object$testContingencyTable)
+      
+    }
+    else {
+      cat(c(ind, 'NRMSE: ', object$nrmse, '\n'))
+      cat(c(ind, 'MSE: ', object$mse, '\n'))
+    }
+  }
 }
 
 predict.snn = function(object, newdata, type = c("response", "prob"), daisyObj = NULL,...) {

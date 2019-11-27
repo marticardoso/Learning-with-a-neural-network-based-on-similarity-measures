@@ -16,15 +16,16 @@ library(mlbench)
 # Classification #
 ##################
 
-nRuns <- 10
-
+nRuns <- 1
+ini <- milisec()
 s <- sample(nrow(wine), 100)
-
+set.seed(1234)
 mult.ensA <- numeric(nRuns)
 for (i in 1:nRuns) {
-  r1 <- snn.bagging(Type ~ ., subset = s, wine, bagging.method = 'A', runDaisyOnce=TRUE)
+  r1 <- snn.bagging(Type ~ ., subset = s, wine, bagging.method = 'A', runDaisyOnce = FALSE,  useGlobalDaisyTransformations = TRUE, nSNN = 20)
   mult.ensA[i] <- r1$testAccuracy
 }
+myToc(ini)
 mean(mult.ensA)
 
 mult.ensA2 <- numeric(nRuns)
@@ -144,3 +145,28 @@ reg.lm <- snn.bagging(lpsa ~ ., prostate, subset = s, nclust.method = "U", baggi
 reg.lm$mse
 reg.lm$nrmse
 
+
+sampleTwoThirds <- function(ds) {
+  sample(nrow(ds), floor(2 / 2.5 * nrow(ds)))
+}
+
+ds2 <- read.csv('./datasets/regression/CASP.csv')
+s.d2 <- sampleTwoThirds(ds2)
+
+reg.lm <- snn.bagging(RMSD ~ ., ds2, subset = s.d2, nclust.method = "U", bagging.method = 'A', nSNN = 200)
+reg.lm$nrmse
+
+summary(lm(RMSD ~ ., ds2))
+
+
+ds3 <- read.csv('./datasets/regression/SkillCraft1_Dataset.csv')
+s.d3 <- sampleTwoThirds(ds3)
+#Timeout error
+snn.ds3 <- snn.bagging(LeagueIndex ~ ., ds3, nclust.method = "U", bagging.method = 'A', subset = s.d3, nSNN = 200)
+snn.ds3$nrmse
+
+
+
+daisyObject <- daisy2_noComputation(ds2, metric = "gower")
+
+data.train.inputs

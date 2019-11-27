@@ -54,7 +54,9 @@ snn.bagging <- function(formula, data, subset = NULL, nSNN = 10,
   z$formula <- formula
   z$problemType <- z$fit2layer$problemType
   z$responseLevels <- levels(y)
-
+  z$runDaisyOnce <- runDaisyOnce
+  z$useGlobalDaisyTransformations <- useGlobalDaisyTransformations
+  z$snn.reg <- snn.reg
   # Use test set
   if (!is.null(subset) && length(subset) < nrow(data)) {
     if (trace) cat('Predicting test data\n')
@@ -267,4 +269,48 @@ getTypeOfProblem <- function(y) {
   else if (is.numeric(y)) type <- 'numeric'
   else stop(gettextf("Output type not supported"))
   type
+}
+
+
+# PRINTINGS #
+
+print.snn.bagging <- function(object, firstSNN = FALSE, ...) {
+  cat('--- Bagging of SNNs ---\n')
+  cat(c('A set of ', object$nSNN, ' SNN\n'), sep = '')
+  cat(c(object$problemType, 'problem\n'))
+
+  cat('formula: ')
+  print(object$formula)
+
+  cat('options were: \n')
+  ind <- '    '
+  cat(c(ind, '2n layer fit method: ', object$fit2layer$method, ifelse(object$fit2layer$regularization, '(Reg)', ''), '\n'))
+  if (object$runDaisyOnce) cat(c(ind, 'Daisy only once, at begging level !\n'))
+  else if (object$useGlobalDaisyTransformations) cat(c(ind, 'Daisy in each SNN (but rangs computed at bagging level)\n'))
+  else cat(c(ind, 'Daisy in each SNN!\n'))
+
+  cat(c(ind, 'SNN reg.:', ifelse(object$snn.reg, 'YES', 'NO'), '\n'))
+
+  if (firstSNN) {
+    cat('--- First SNN ---\n')
+    print(object$snn.sets[[1]])
+  }
+}
+
+summary.snn.bagging <- function(object,...) {
+  ind <- '    '
+  print(object,...)
+
+  if (!is.null(object$testResponse)) {
+    cat('\n--- TEST RESULTS ---\n')
+    if (!is.null(object$testAccuracy)) {
+      cat(c(ind, 'Accuracy:', round(object$testAccuracy, 3), '\n'))
+      cat(c(ind, 'Contingency table:\n'))
+      print(object$testContingencyTable)
+    }
+    else {
+      cat(c(ind, 'NRMSE: ', object$nrmse, '\n'))
+      cat(c(ind, 'MSE: ', object$mse, '\n'))
+    }
+  }
 }
