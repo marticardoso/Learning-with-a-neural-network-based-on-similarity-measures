@@ -338,10 +338,17 @@ summary.snn <- function(object) {
   }
 }
 
-predict.snn = function(object, newdata, type = c("response", "prob"), daisyObj = NULL,...) {
-  mf <- model.frame(object$formula, newdata)
-  x <- mf[, -1]
-  y <- model.response(mf)
+predict.snn = function(object, newdata, type = c("response", "prob"), daisyObj = NULL, ...) {
+  if (ncol(object$prototypes)+1 == ncol(newdata)) {
+    mf <- model.frame(object$formula, newdata)
+    x <- mf[, -1]
+    y <- model.response(mf)
+  }
+  else if (ncol(object$prototypes) == ncol(newdata)) {
+    x <- newdata
+  }
+  else stop('Invalid new data')
+  
 
   nprot <- nrow(object$prototypes)
   compute.daisy <- function(newX, prototypes) {
@@ -383,7 +390,7 @@ predict.snn = function(object, newdata, type = c("response", "prob"), daisyObj =
     else
       prob <- predict(object$model, test.x, type = "response")
     if (length(object$outputLevels) == 2) {
-      response <- rep(object$outputLevels[1], length(y))
+      response <- rep(object$outputLevels[1], nrow(x))
       response[prob >= 0.5] <- object$outputLevels[2]
       test.prob <- prob
     }

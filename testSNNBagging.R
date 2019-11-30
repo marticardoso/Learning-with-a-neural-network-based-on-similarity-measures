@@ -95,6 +95,13 @@ for (i in 1:nRuns) {
 }
 mean(bin.ensBReg)
 
+bin.ensC <- numeric(nRuns)
+for (i in 1:nRuns) {
+  r1 <- snn.bagging(Type1 ~ ., subset = s, wine2, bagging.method = 'C')
+  bin.ensC[i] <- r1$testAccuracy
+}
+mean(bin.ensC)
+
 bin.snn <- numeric(nRuns)
 for (i in 1:nRuns) {
   r1 <- snn(Type1 ~ ., subset = s, wine2, bagging.method = 'B')
@@ -130,6 +137,15 @@ for (i in 1:nRuns) {
   reg.ensBReg[i] <- reg.lm$nrmse
 }
 mean(reg.ensBReg)
+
+
+reg.ensC <- numeric(nRuns)
+for (i in 1:nRuns) {
+  reg.lm <- snn.bagging(medv ~ ., BostonHousing, subset = s, regularization = FALSE, nclust.method = "U", bagging.method = 'C')
+  reg.ensC[i] <- reg.lm$nrmse
+}
+mean(reg.ensC)
+
 
 reg.snn <- numeric(nRuns)
 for (i in 1:nRuns) {

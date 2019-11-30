@@ -1,6 +1,6 @@
 source('SNN.R')
 source('benchmarkutils.R')
-
+source('MoF.R')
 # Trace level
 
 
@@ -44,7 +44,7 @@ snn.bagging <- function(formula, data, subset = NULL, nSNN = 10,
 
   
 
-  fit2layer <- snn.bagging.fit.second.layer(data.train, y, snn.sets, daisyObject = daisyObject, regularization = regularization, ..., trace = trace)
+  fit2layer <- snn.bagging.fit.second.layer(data.train.inputs, y, snn.sets, daisyObject = daisyObject, regularization = regularization, ..., trace = trace)
 
   z <- list()
   class(z) <- c("snn.bagging")
@@ -89,24 +89,24 @@ snn.bagging <- function(formula, data, subset = NULL, nSNN = 10,
   z
 }
 
-snn.bagging.fit.second.layer <- function(data.train, y, snn.sets, daisyObject, bagging.method = 'B', regularization=FALSE, ..., trace = TRUE) {
+snn.bagging.fit.second.layer <- function(data.train.input, y, snn.sets, daisyObject, bagging.method = 'B', regularization=FALSE, ..., trace = TRUE) {
 
   if (trace) cat('Fitting second layer... ')
 
   if (trace) cat('Computing output for all models (Bagging) \n')
   
-  if (bagging.method == 'B') {
+  if (bagging.method == 'B' || bagging.method == 'C') {
 
     myTic()
-    snn.sets.pred <- lapply(1:length(snn.sets), function(i) predict(snn.sets[[i]], data.train, type = "prob", daisyObj = daisyObject))
+    snn.sets.pred <- lapply(1:length(snn.sets), function(i) predict(snn.sets[[i]], data.train.input, type = "prob", daisyObj = daisyObject))
 
 
 
-    bagging.ds <- data.frame(row.names = row.names(data.train))
+    bagging.ds <- data.frame(row.names = row.names(data.train.input))
     for (snn.i.pred in snn.sets.pred)
       bagging.ds <- cbind(bagging.ds, snn.i.pred)
     colnames(bagging.ds) <- 1:ncol(bagging.ds)
-    bagging.ds$Target <- y
+   
     myToc()
   }
 
@@ -118,7 +118,8 @@ snn.bagging.fit.second.layer <- function(data.train, y, snn.sets, daisyObject, b
   if (bagging.method == 'A' || bagging.method == 'A2') {
     # Nothing to do
   }
-  if (bagging.method == 'B') {
+  else if (bagging.method == 'B') {
+    bagging.ds$Target <- y
     if (!regularization && z$problemType == 'binomial') {
       if (trace) cat("[2nd layer] Fitting glm...\n")
       z$model <- glm(Target ~ ., data = bagging.ds, family = "binomial", ...)
@@ -150,6 +151,21 @@ snn.bagging.fit.second.layer <- function(data.train, y, snn.sets, daisyObject, b
       }
 
     }
+  }
+  else if (bagging.method == 'C') {
+    if (z$problemType == 'numeric') {
+      if (!regularization) {
+        z$model <- MoE.optimize(data.train.input, bagging.ds, y)        
+      }
+      else stop('Not yet implemented')
+      }
+    else if (z$problemType == 'binomial') {
+      if (!regularization) {
+        z$model <- MoE.optimize(data.train.input, bagging.ds, y)
+      }
+      else stop('Not yet implemented')
+    }
+    else stop('Not yet implemented')
   }
   z
 }
@@ -245,8 +261,15 @@ predict.snn.bagging = function(object, newdata, type = c("response", "prob")) {
     }
   }
   else if (object$fit2layer$method == 'C') {
-    stop('ToDo')
-  }
+    if (object$problemType == 'numeric') {
+        dt1 <<- x
+        bs1 <<- bagging.ds
+        gy1 <<- object$fit2layer$model
+        print('Weel')
+        response <- MoE.predict(object$fit2layer$model, x, bagging.ds)
+      }
+    else stop('Not implemented')
+    }
 
   z <- list()
 
