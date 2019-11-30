@@ -1,6 +1,6 @@
 source('SNN.R')
 source('benchmarkutils.R')
-source('MoF.R')
+source('MoE.R')
 # Trace level
 
 

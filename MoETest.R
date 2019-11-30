@@ -4,7 +4,7 @@ set.seed(104)
 # Set environment
 setwd(".")
 
-source('MoF.R')
+source('MoE.R')
 n <- 10
 p <- 3
 m <- 5
