@@ -104,7 +104,7 @@ mean(bin.ensC)
 
 bin.snn <- numeric(nRuns)
 for (i in 1:nRuns) {
-  r1 <- snn(Type1 ~ ., subset = s, wine2, bagging.method = 'B')
+  r1 <- snn(Type1 ~ ., subset = s, wine2)
   bin.snn[i] <- r1$testAccuracy
 }
 mean(bin.snn)

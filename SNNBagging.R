@@ -155,13 +155,13 @@ snn.bagging.fit.second.layer <- function(data.train.input, y, snn.sets, daisyObj
   else if (bagging.method == 'C') {
     if (z$problemType == 'numeric') {
       if (!regularization) {
-        z$model <- MoE.optimize(data.train.input, bagging.ds, y)        
+        z$model <- MoE.optimize(data.train.input, bagging.ds, y, 'numeric')        
       }
       else stop('Not yet implemented')
       }
     else if (z$problemType == 'binomial') {
       if (!regularization) {
-        z$model <- MoE.optimize(data.train.input, bagging.ds, y)
+        z$model <- MoE.optimize(data.train.input, bagging.ds, y, 'binomial')
       }
       else stop('Not yet implemented')
     }
@@ -262,12 +262,17 @@ predict.snn.bagging = function(object, newdata, type = c("response", "prob")) {
   }
   else if (object$fit2layer$method == 'C') {
     if (object$problemType == 'numeric') {
-        dt1 <<- x
-        bs1 <<- bagging.ds
-        gy1 <<- object$fit2layer$model
         print('Weel')
         response <- MoE.predict(object$fit2layer$model, x, bagging.ds)
+    }
+    else if (object$problemType == 'binomial') {
+      test.prob <- MoE.predict(object$fit2layer$model, x, bagging.ds)
+      response <- test.prob >= 0.5
+      if (!is.null(object$responseLevels)) {
+        response <- factor(response, levels = c(FALSE, TRUE))
+        levels(response) <- object$responseLevels
       }
+    }
     else stop('Not implemented')
     }
 
