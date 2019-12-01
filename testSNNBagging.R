@@ -16,7 +16,7 @@ library(mlbench)
 # Classification #
 ##################
 
-nRuns <- 1
+nRuns <- 10
 ini <- milisec()
 s <- sample(nrow(wine), 100)
 set.seed(1234)
@@ -48,6 +48,13 @@ for (i in 1:nRuns) {
   mult.ensBReg[i] <- r1$testAccuracy
 }
 mean(mult.ensBReg)
+
+mult.ensC <- numeric(nRuns)
+for (i in 1:nRuns) {
+  r1 <- snn.bagging(Type ~ ., subset = s, wine, bagging.method = 'C')
+  mult.ensC[i] <- r1$testAccuracy
+}
+mean(mult.ensC)
 
 #Test with one SNN
 mult.snn <- numeric(nRuns)

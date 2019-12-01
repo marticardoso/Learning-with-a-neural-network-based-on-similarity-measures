@@ -155,7 +155,7 @@ snn.bagging.fit.second.layer <- function(data.train.input, y, snn.sets, daisyObj
   else if (bagging.method == 'C') {
     if (z$problemType == 'numeric') {
       if (!regularization) {
-        z$model <- MoE.optimize(data.train.input, bagging.ds, y, 'numeric')        
+        z$model <- MoE.optimize(data.train.input, bagging.ds, y, 'numeric')
       }
       else stop('Not yet implemented')
       }
@@ -164,7 +164,13 @@ snn.bagging.fit.second.layer <- function(data.train.input, y, snn.sets, daisyObj
         z$model <- MoE.optimize(data.train.input, bagging.ds, y, 'binomial')
       }
       else stop('Not yet implemented')
-    }
+      }
+    else if (z$problemType == 'multinomial') {
+      if (!regularization) {
+        z$model <- MoE.optimize(data.train.input, bagging.ds, y, 'multinomial')
+      }
+      else stop('Not yet implemented')
+      }
     else stop('Not yet implemented')
   }
   z
@@ -272,6 +278,10 @@ predict.snn.bagging = function(object, newdata, type = c("response", "prob")) {
         response <- factor(response, levels = c(FALSE, TRUE))
         levels(response) <- object$responseLevels
       }
+    }
+    else if (object$problemType == 'multinomial') {
+      test.prob <- MoE.predict(object$fit2layer$model, x, bagging.ds)
+      response <- apply(test.prob, 1, function(p) object$responseLevels[which.max(p)[1]])
     }
     else stop('Not implemented')
     }

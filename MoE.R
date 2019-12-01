@@ -15,8 +15,21 @@ MoE.predict <- function(object, x, snnX) {
   if (any(conflictRules)) {
     bettas[conflictRules,] <- t(apply(o1[conflictRules,, drop = FALSE], 1, function(row) as.numeric(row == max(row)) / sum(row == max(row))))
   }
+  if (object$type == 'multinomial') {
+    bettas <- bettas[, rep(1:ncol(bettas), each = object$numLevels)]
+  }
   y <- bettas * snnX
-  z <- rowSums(y)
+  
+  if (object$type == 'multinomial') {
+    z <- matrix(0, nrow = nrow(x), ncol = object$numLevels)
+    for (i in 1:object$numLevels) {
+      tmp <- y[, (0:(ncol(b) - 1)) * object$numLevels + i]
+      z[, i] <- rowSums(tmp)
+    }
+  }
+  else {
+    z <- rowSums(y)
+  }
   z
 }
 
@@ -58,6 +71,10 @@ MoE.optimize <- function(x, snnX, t, type, bIni = NULL) {
 
   z <- list()
   z$b <- matrix(res$par, p + 1, m)
+  z$type <- type
+  if (type == "multinomial") {
+    z$numLevels <- nlevels(t)
+  }
   class(z) <- "MoE"
   z
 }
