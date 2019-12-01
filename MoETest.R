@@ -87,7 +87,15 @@ func(res$par) # Should be 0
 
 (o <- MoE.E.regression(x, snnX, t, b))
 (o <- MoE.E.regression(x, snnX, t, newB))
+r <- MoE.optimize(x, snnX, t, 'binomial')
+MoE.E.binomial(x, snnX, t, r$b)
 
+
+t <- factor(t,levels = c('TRUE','FALSE'))
+(o <- MoE.E.binomial(x, snnX, t, b))
+(o2 <- MoE.dE.binomial(x, snnX, t, b))
+r <- MoE.optimize(x, snnX, t, 'binomial')
+MoE.E.binomial(x, snnX, t, r$b)
 
 ##################################
 # Multinomial

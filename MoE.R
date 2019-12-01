@@ -175,9 +175,8 @@ MoE.E.binomial <- function(x, snnX, t, b) {
 
   if (is.logical(t)) isClass2 <- t
   else isClass2 <- as.numeric(t) == 2
-  z <- numeric(length(t))
-  z[!isClass2] <- ln(1 - y2[!isClass2])
-  z[isClass2] <- ln(y2[isClass2])
+  y2[!isClass2] <- 1 - y2[!isClass2]
+  z <- ln(y2 + 1e-50) # 1e-50 -> fix ln(0)
   z <- -sum(z) / length(t)
   return(z)
 }
@@ -199,10 +198,8 @@ MoE.dE.binomial <- function(x, snnX, t, b) {
   if (is.logical(t)) isClass2 <- t
   else isClass2 <- as.numeric(t) == 2
   E <- numeric(length(t))
-  E[!isClass2] <- -1 / (1 - y2[!isClass2])
-  E[isClass2] <- 1 / y2[isClass2]
-  E[!isClass2 && y2 == 1] <- 0
-  E[isClass2 && y2 == 0] <- 0
+  E[!isClass2] <- -1 / (1 - y2[!isClass2] + 1e-50) # 1e-50 -> fix ln(0)
+  E[isClass2] <- 1 / (y2[isClass2] + 1e-50) # 1e-50 -> fix ln(0)
 
   sumRow_snn_exp_o1 <- rowSums(snnX * exp_o1)
   sumRow_exp_o1 <- rowSums(exp_o1)
@@ -242,7 +239,7 @@ MoE.E.multinomial <- function(x, snnX, t, b) {
   y <- bettas * snnXValidClass
 
   y2 <- rowSums(y)
-  z <- -sum(ln(y2 + 1))
+  z <- -sum(ln(y2 + 1e-50)) # 1e-50 -> fix ln(0)
   return(z)
 }
 
@@ -271,7 +268,7 @@ MoE.dE.multinomial <- function(x, snnX, t, b) {
   y <- bettas * snnXValidClass
   y2 <- rowSums(y)
 
-  E <- 1 / (y2 + 1)
+  E <- 1 / (y2 + 1e-50) # 1e-50 -> fix ln(0)
 
   sumRow_snn_exp_o1 <- rowSums(snnXValidClass * exp_o1)
   sumRow_exp_o1 <- rowSums(exp_o1)
