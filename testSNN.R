@@ -265,5 +265,25 @@ summary(Servo)
 
 
 
+source('datasets/HorseColic23/HorseColic23.r')
+summary(horse.colic)
+s <- sample(nrow(horse.colic), 300)
+hc.snn <- snn(Target ~ ., horse.colic, subset = s)
+hc.snn$testContingencyTable
+hc.snn$testAccuracy
+
+#r1 <- snn.bagging(Target ~ ., horse.colic, subset = s, bagging.method = 'B', nSNN = 100)
+#r1$testContingencyTable
+#r1$testAccuracy
 
 
+source('datasets/HorseColic24/HorseColic24.r')
+summary(horse.colic)
+s <- sample(nrow(horse.colic), 300)
+hc.snn <- snn(Target ~ ., horse.colic, subset = s)
+hc.snn$testContingencyTable
+hc.snn$testAccuracy
+
+r1 <- snn.bagging(Target ~ ., horse.colic, subset = s, bagging.method = 'B', nSNN = 100)
+r1$testContingencyTable
+r1$testAccuracy

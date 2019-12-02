@@ -14,8 +14,9 @@ snn.bagging <- function(formula, data, subset = NULL, nSNN = 10,
 
   if(trace) cat('Computing dissimilarities \n') # Compute similarities before in order to speed up
   myTic()
-  data.train.inputs <- model.frame(formula, data.train)[, -1]
-  y <- model.response(model.frame(formula, data.train))
+  mf <- model.frame(formula, data.train, na.action = NULL)
+  data.train.inputs <- mf[, -1]
+  y <- model.response(mf)
   if (runDaisyOnce) {
     if(trace) cat('Daisy is computed only once, at the begging!\n')
     daisyObject <- daisy2(data.train.inputs, metric = "gower", type = simil.types)
@@ -61,7 +62,7 @@ snn.bagging <- function(formula, data, subset = NULL, nSNN = 10,
   if (!is.null(subset) && length(subset) < nrow(data)) {
     if (trace) cat('Predicting test data\n')
 
-    test.y <- model.response(model.frame(formula, data = data[-subset,]))
+    test.y <- model.response(model.frame(formula, data = data[-subset,], na.action=NULL))
 
     if (is.logical(y) || is.factor(y)) {
       pred <- predict(z, newdata = data[-subset,], type = c("response", "prob"))
@@ -180,7 +181,7 @@ snn.bagging.fit.second.layer <- function(data.train.input, y, snn.sets, daisyObj
 # Prediction! #
 # # # # # # # #
 predict.snn.bagging = function(object, newdata, type = c("response", "prob")) {
-  mf <- model.frame(object$formula, newdata)
+  mf <- model.frame(object$formula, newdata, na.action = NULL)
   x <- mf[, -1]
 
   nmodels <- length(object$snn.sets)

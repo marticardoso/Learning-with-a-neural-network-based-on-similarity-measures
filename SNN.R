@@ -12,13 +12,16 @@ debug = TRUE
 snn <- function(formula, data, subset = NULL, x = TRUE, y = TRUE, ..., trace = TRUE) {
   ret.x <- x
   ret.y <- y
-  mf <- match.call(expand.dots = FALSE)
-  m <- match(c("formula", "data", "subset"), names(mf), 0L)
-  mf <- mf[c(1L, m)]
-  mf$drop.unused.levels <- TRUE
-  ## need stats:: for non-standard evaluation
-  mf[[1L]] <- quote(stats::model.frame)
-  mf <- eval(mf, parent.frame())
+  #mf <- match.call(expand.dots = FALSE)
+  #m <- match(c("formula", "data", "subset", "na.action"), names(mf), 0L)
+  #mf <- mf[c(1L, m)]
+  #mf$drop.unused.levels <- TRUE
+  #mf$na.omit <- NULL
+  # need stats:: for non-standard evaluation
+  #mf[[1L]] <- quote(stats::model.frame)
+  #mf <- eval(mf, parent.frame())
+  mf <- model.frame(formula = formula, data = data, na.action = NULL, drop.unused.levels = TRUE)
+  if (!is.null(subset)) mf <- mf[subset,]
 
   if (is.empty.model(mf)) {
     stop("Empty model not supported")
@@ -40,8 +43,8 @@ snn <- function(formula, data, subset = NULL, x = TRUE, y = TRUE, ..., trace = T
   #Predict test data
   if (!is.null(subset) && length(subset) < nrow(data)) {
     if (trace) cat('Predicting test data\n')
-
-    test.y <- model.response(model.frame(formula, data = data[-subset,]))
+    mf.test <- model.frame(formula, data = data[-subset,], na.action = NULL, drop.unused.levels = TRUE)
+    test.y <- model.response(mf.test)
 
     if (is.logical(y) || is.factor(y)) {
       pred <- predict(z, newdata = data[-subset,], type = c("response", "prob"))
@@ -340,7 +343,7 @@ summary.snn <- function(object) {
 
 predict.snn = function(object, newdata, type = c("response", "prob"), daisyObj = NULL, ...) {
   if (ncol(object$prototypes)+1 == ncol(newdata)) {
-    mf <- model.frame(object$formula, newdata)
+    mf <- model.frame(object$formula, newdata, na.action = NULL)
     x <- mf[, -1]
     y <- model.response(mf)
   }
