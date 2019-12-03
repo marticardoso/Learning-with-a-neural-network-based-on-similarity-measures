@@ -130,8 +130,8 @@ E.binomial <- function(p, simils, t, w, reg = FALSE, lambda = 0) {
   if (is.logical(t)) isClass2 <- t
   else isClass2 <- as.numeric(t) == 2
   z <- numeric(length(t))
-  z[!isClass2] <- ln(1 - nnRes[!isClass2])
-  z[isClass2] <- ln(nnRes[isClass2])
+  z[!isClass2] <- ln(1 - nnRes[!isClass2] + 1e-50)
+  z[isClass2] <- ln(nnRes[isClass2] + 1e-50)
   #z <- class.ind(t) * ln(cbind(1 - nnRes, nnRes))
 
   z <- -sum(z) / length(t)
@@ -772,15 +772,55 @@ opt2.dE.regression <- function(p, w, simils, t) {
   return(res)
 }
 
+opt2.dE.binomial <- function(p, w, simils, t) {
+  if (p <= 0) return(NA)
+  # Compute net result
+  fp_X <- apply.fp(simils, p)
+  fp_X_w <- cbind(1, fp_X) %*% w
+  snnRes <- sigmoid(fp_X_w)
+
+  if (is.logical(t)) isClass2 <- t
+  else isClass2 <- as.numeric(t) == 2
+  # Compute dsnn : Weights
+  nW <- length(w)
+  dsnn.w <- matrix(rep(dsigmoid(fp_X_w), nW), ncol = nW) * cbind(1, fp_X)
+  snnResColRep <- matrix(rep(snnRes, nW), ncol = nW)
+  dsnn.w[!isClass2] <- -dsnn.w[!isClass2,] / (1 - snnResColRep[!isClass2,] + 1e-50)
+  dsnn.w[isClass2] <- dsnn.w[isClass2,] / (snnResColRep[isClass2,] + 1e-50)
+  dsnn.w <- colSums(dsnn.w)
+
+  # Compute dnn : p param
+  dfp_X <- apply.dfp(simils, p)
+  dfp_X_w <- dfp_X %*% w[-1] # No intercpet
+  dsnnRes <- dsigmoid(fp_X_w) * dfp_X_w  
+  dsnn.p <- numeric(length(t))
+  dsnn.p[!isClass2] <- -dsnnRes[!isClass2] / (1 - snnRes[!isClass2] + 1e-50)
+  dsnn.p[isClass2] <- dsnnRes[isClass2] / (snnRes[isClass2] + 1e-50)
+
+  dsnn.p <- sum(dsnn.p)
+
+  res <- -c(dsnn.w, dsnn.p)
+  res
+}
+
 
 optimize_p_oneOpt <- function(simils, t, pInitial = 0.1, ..., trace = TRUE) {
 
+  if (is.numeric(t)) {
+    E <- E.regression
+    dE <- opt2.dE.regression
+  }
+  else if (is.logical(t) || (is.factor(t) && nlevels(t) == 2)) {
+    E <- E.binomial
+    dE <- opt2.dE.binomial
+  }
+  else stop('Not implemented (fp_utils)')
   #Function to optimize
   func <- function(args) {
     n <- length(args)
     p <- args[n]
     w <- args[1:n - 1]
-    E.regression(p=p, simils=simils, t=t, w=w, reg=FALSE)
+    E(p=p, simils=simils, t=t, w=w, reg=FALSE)
   }
 
   #Gradient function
@@ -788,7 +828,7 @@ optimize_p_oneOpt <- function(simils, t, pInitial = 0.1, ..., trace = TRUE) {
     n <- length(args)
     p <- args[n]
     w <- args[1:n - 1]
-    opt2.dE.regression(p, w, simils, t)
+    dE(p, w, simils, t)
   }
 
   initialValues <- c(numeric(ncol(simils) + 1), pInitial)

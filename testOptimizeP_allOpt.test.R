@@ -23,7 +23,6 @@ snn.res <- snn(lpsa ~ ., prostate, subset = s, x = TRUE, y = TRUE)
 
 gSimils <- snn.res$simil.matrix.prot
 gT <- snn.res$y
-
 # Objective function
 r <- optimize_p_oneOpt(gSimils, gT, pInitial = 10.1)
 
@@ -79,3 +78,43 @@ for (i in 1:50) {
   r <- optimize_p_oneOpt(gSimils, gT, pInitial = 10.1)
 }
 fulltime <- milisec(ini)
+
+
+
+#########################
+# Binomial
+
+gTFact <- factor(gT > 2)
+
+r <- optimize_p_oneOpt(gSimils, gTFact, pInitial = 0.1)
+r
+
+#Define function to optimize
+func <- function(args) {
+  n <- length(args)
+  p <- args[n]
+  w <- args[1:n - 1]
+  E.binomial(p = p, simils = gSimils, t = gTFact, w = w, reg = FALSE)
+}
+
+#Gradient function
+grad <- function(args) {
+  n <- length(args)
+  p <- args[n]
+  w <- args[1:n - 1]
+  opt2.dE.binomial(p, w, gSimils, gTFact)
+}
+initialValues <- c(numeric(ncol(gSimils) + 1) + 1, 10000)
+func(initialValues)
+grad(initialValues)
+res <- optim(initialValues, func, grad, method = "BFGS")
+
+# Compute the LM model
+gDs <- data.frame(gSimils)
+gDs$Target <- gTFact
+glm.r <- glm(Target ~ ., gDs, family = "binomial")
+coef(glm.r)
+round(res$par,2)
+func(c(coef(glm.r), 10000000))
+func(res$par)
+
