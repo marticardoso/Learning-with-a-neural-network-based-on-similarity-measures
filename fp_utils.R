@@ -180,7 +180,7 @@ E.multinomial <- function(p, simils, t, w, reg = FALSE, lambda = 0) {
   if (p <= 0) return(NA)
   X <- apply.fp(simils, p)
   X <- cbind(1, X)
-  X <- X %*% t(w)
+  X <- X %*% w
   X <- cbind(0, X)
 
   exp_X <- exp(X)
@@ -804,6 +804,52 @@ opt2.dE.binomial <- function(p, w, simils, t) {
 }
 
 
+opt2.dE.multinomial <- function(p, w, simils, t) {
+  if (p <= 0) return(NA)
+  # Compute net result
+  fp_X <- apply.fp(simils, p)
+  fp_X_w <- cbind(1, fp_X) %*% w
+  fp_X_w <- cbind(0,fp_X_w)
+  exp_X <- exp(fp_X_w)
+  sumRow_exp_X <- matrix(rep(rowSums(exp_X), nlevels(t)), ncol = nlevels(t))
+  nnetRes <- exp_X / matrix(rep(rowSums(exp_X), nlevels(t)), ncol = nlevels(t))
+  # Fix NaN
+  conflictRules <- is.nan(rowSums(nnetRes))
+  if (any(conflictRules)) {
+    nnetRes[conflictRules,] <- t(apply(fp_X_w[conflictRules,, drop = FALSE], 1, function(row) as.numeric(row == max(row)) / sum(row == max(row))))
+  }
+
+  # Compute dsnn : Weights
+  dsnn.w <- matrix(0, ncol(w), nrow(w))
+  denom <- (nnetRes + sumRow_exp_X ^ 2 + 1e-50)
+  for (i in 1:nlevels(t)) {
+    isClass <- t == levels(t)[i]
+    p1 <- t((exp_X / denom)[isClass, i, drop = FALSE] * sumRow_exp_X[isClass, i, drop = FALSE]) %*% cbind(1, fp_X[isClass,])
+    p1 <- matrix(rep(p1, ncol(w)), nrow = ncol(w), byrow = TRUE)
+    p2 <- -t(matrix(rep(exp_X[, i] / denom[,i], ncol(w)), ncol = ncol(w)) * exp_X[, -1])[, isClass] %*% cbind(1, fp_X[isClass,])
+    dsnn.w <- dsnn.w + (p1 - p2)
+  }
+
+  # Compute dnn : p param
+  dfp_X <- apply.dfp(simils, p)
+  dfp_X_w <- dfp_X %*% w[-1, ] # No intercpet
+  dfp_X_w <- cbind(0, dfp_X_w)
+
+
+  sumRow_exp_X <- matrix(rep(rowSums(exp_X), 3), ncol = 3)
+  sumRow_exp_X_dot_dX <- matrix(rep(rowSums(exp_X * dfp_X_w), 3), ncol = 3)
+  dnnetRes <- (sumRow_exp_X * exp_X * dfp_X_w - exp_X * sumRow_exp_X_dot_dX) / sumRow_exp_X ^ 2
+  #Fix nan
+  dnnetRes[is.na(dnnetRes)] <- 0
+
+  dsnn.p <- class.ind(t) * dnnetRes / nnetRes
+  dsnn.p <- sum(dsnn.p)
+  
+
+  res <- -c(as.vector(t(dsnn.w)), dsnn.p)
+  res
+}
+
 optimize_p_oneOpt <- function(simils, t, pInitial = 0.1, ..., trace = TRUE) {
 
   if (is.numeric(t)) {
@@ -813,6 +859,10 @@ optimize_p_oneOpt <- function(simils, t, pInitial = 0.1, ..., trace = TRUE) {
   else if (is.logical(t) || (is.factor(t) && nlevels(t) == 2)) {
     E <- E.binomial
     dE <- opt2.dE.binomial
+  }
+  else if (is.factor(t) && nlevels(t) > 2) {
+    E <- E.multinomial
+    dE <- opt2.dE.multinomial
   }
   else stop('Not implemented (fp_utils)')
   #Function to optimize

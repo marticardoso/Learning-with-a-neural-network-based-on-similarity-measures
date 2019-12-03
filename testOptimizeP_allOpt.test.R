@@ -118,3 +118,45 @@ round(res$par,2)
 func(c(coef(glm.r), 10000000))
 func(res$par)
 
+
+
+#########################
+# Multinomial
+
+gT2 <- gT
+gT2[gT < 2] <- 2
+gT2[gT >4] <- 4
+gTFact <- factor(round(gT2))
+
+r <- optimize_p_oneOpt(gSimils, gTFact, pInitial = 0.1)
+r
+
+#Define function to optimize
+func <- function(args) {
+  n <- length(args)
+  p <- args[n] 
+  w <- matrix(args[1:n - 1], ncol = nlevels(gTFact) - 1)
+  E.multinomial(p = p, simils = gSimils, t = gTFact, w = w, reg = FALSE)
+}
+
+#Gradient function
+grad <- function(args) {
+  n <- length(args)
+  p <- args[n]
+  w <- matrix(args[1:n - 1], ncol = nlevels(gTFact)-1)
+  -opt2.dE.multinomial(p, w, gSimils, gTFact)
+}
+initialValues <- c(numeric((ncol(gSimils) + 1)*(nlevels(gTFact)-1)) + 1, 10000)
+func(initialValues)
+grad(initialValues)
+res <- optim(initialValues, func, grad, method = "BFGS")
+res$value
+res$par
+# Compute the LM model
+gDs <- data.frame(gSimils)
+gDs$Target <- gTFact
+mult.r <- multinom(Target ~ ., gDs)
+coef(mult.r)
+round(res$par, 2)
+func(c(t(coef(mult.r)), 10000000))
+func(res$par)
