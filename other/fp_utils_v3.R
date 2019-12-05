@@ -799,3 +799,144 @@ optimize_p_oneOpt <- function(simils, t, pInitial = 0.1, ..., trace = TRUE) {
   z$E <- res$value
   z
 }
+
+
+opt2.dE.multinomial2 <- function(p, w, simils, t) {
+  if (p <= 0) return(NA)
+  # Compute net result
+  fp_X <- apply.fp(simils, p)
+  fp_X_w <- cbind(1, fp_X) %*% w
+  fp_X_w <- cbind(0, fp_X_w)
+  exp_X <- exp(fp_X_w)
+  sumRow_exp_X <- matrix(rep(rowSums(exp_X), nlevels(t)), ncol = nlevels(t))
+  nnetRes <- exp_X / sumRow_exp_X
+  # Fix NaN
+  conflictRules <- is.nan(rowSums(nnetRes))
+  if (any(conflictRules)) {
+    nnetRes[conflictRules,] <- t(apply(fp_X_w[conflictRules,, drop = FALSE], 1, function(row) as.numeric(row == max(row)) / sum(row == max(row))))
+  }
+
+  # Compute dsnn : Weights
+  denom <- (nnetRes + sumRow_exp_X ^ 2 + 1e-50)
+  exp_X_div_sum_exp_X <- exp_X / sumRow_exp_X
+  exp_X_div_sum_exp_X2 <- exp_X / sumRow_exp_X ^ 2
+
+  dsnn.w <- matrix(0, nrow(w), ncol(w))
+  for (i in 1:nlevels(t)) {
+    isClass <- t == levels(t)[i]
+    p1 <- matrix(0, nrow(exp_X), ncol(exp_X))
+    p1[isClass, i] <- exp_X_div_sum_exp_X[isClass, i, drop = FALSE]
+    p1 <- t(cbind(1, fp_X[isClass,])) %*% p1[isClass,]
+    p1 <- p1[, 2:ncol(p1)]
+    p2 <- -t(cbind(1, fp_X[isClass,])) %*% ((matrix(rep(exp_X_div_sum_exp_X2[, i], ncol(w)), ncol = ncol(w)) * exp_X[, -1])[isClass,])
+    dsnn.w <- dsnn.w + (p1 - p2)
+  }
+
+  # Compute dnn : p param
+  dfp_X <- apply.dfp(simils, p)
+  dfp_X_w <- dfp_X %*% w[-1,] # No intercpet
+  dfp_X_w <- cbind(0, dfp_X_w)
+
+  sumRow_exp_X <- matrix(rep(rowSums(exp_X), nlevels(t)), ncol = nlevels(t))
+  sumRow_exp_X_dot_dX <- matrix(rep(rowSums(exp_X * dfp_X_w), 3), ncol = 3)
+  dnnetRes <- (sumRow_exp_X * exp_X * dfp_X_w - exp_X * sumRow_exp_X_dot_dX) / sumRow_exp_X ^ 2
+  dnnetRes[is.na(dnnetRes)] <- 0
+  dsnn.p <- class.ind(t) * dnnetRes / nnetRes
+  dsnn.p <- sum(dsnn.p)
+
+
+  res <- -c(as.vector(dsnn.w), dsnn.p)
+  res
+}
+
+
+opt2.dE.multinomial5 <- function(p, w, simils, t) {
+  if (p <= 0) return(NA)
+  # Compute net result
+  fp_X <- apply.fp(simils, p)
+  fp_X_w <- cbind(1, fp_X) %*% w
+  fp_X_w <- cbind(0, fp_X_w)
+  exp_X <- exp(fp_X_w)
+  sumRow_exp_X <- matrix(rep(rowSums(exp_X), nlevels(t)), ncol = nlevels(t))
+  nnetRes <- exp_X / sumRow_exp_X
+  # Fix NaN
+  conflictRules <- is.nan(rowSums(nnetRes))
+  if (any(conflictRules)) {
+    nnetRes[conflictRules,] <- t(apply(fp_X_w[conflictRules,, drop = FALSE], 1, function(row) as.numeric(row == max(row)) / sum(row == max(row))))
+  }
+
+  # Compute dsnn : Weights
+  dsnn.w <- matrix(0, nrow(w), ncol(w))
+  for (i in 1:nrow(w)) {
+    #Prot
+    for (j in 1:ncol(w)) {
+      # Factor
+      for (n in 1:nrow(simils)) {
+        levelId <- which(levels(t) == t[n])
+        p1 <- 0
+        if ((j + 1) == levelId) {
+          p1 <- exp_X[n, levelId] * (cbind(1, fp_X))[n, i] * sumRow_exp_X[n, 1]
+        }
+        p2 <- exp_X[n, levelId] * exp_X[n, j + 1] * (cbind(1, fp_X))[n, i]
+        r <- (p1 - p2) / (sumRow_exp_X[n, 1]) ^ 2
+        dsnn.w[i, j] <- dsnn.w[i, j] + r / (nnetRes[n, levelId] + 1e-50)
+      }
+    }
+  }
+
+  # Compute dnn : p param
+  dfp_X <- apply.dfp(simils, p)
+  dfp_X_w <- dfp_X %*% w[-1,] # No intercpet
+  dfp_X_w <- cbind(0, dfp_X_w)
+
+  sumRow_exp_X <- matrix(rep(rowSums(exp_X), nlevels(t)), ncol = nlevels(t))
+  sumRow_exp_X_dot_dX <- matrix(rep(rowSums(exp_X * dfp_X_w), 3), ncol = 3)
+  dnnetRes <- (sumRow_exp_X * exp_X * dfp_X_w - exp_X * sumRow_exp_X_dot_dX) / sumRow_exp_X ^ 2
+  dnnetRes[is.na(dnnetRes)] <- 0
+  dsnn.p <- class.ind(t) * dnnetRes / nnetRes
+  dsnn.p <- sum(dsnn.p)
+
+
+  res <- -c(dsnn.w, dsnn.p)
+  res
+}
+
+
+opt2.dE.multinomial6 <- function(p, w, simils, t) {
+  if (p <= 0) return(NA)
+  # Compute net result
+  fp_X <- apply.fp(simils, p)
+  fp_X_withInt <- cbind(1, fp_X)
+  fp_X_w <- fp_X_withInt %*% w
+  fp_X_w <- cbind(0, fp_X_w)
+  exp_X <- exp(fp_X_w)
+  sumRow_exp_X <- matrix(rep(rowSums(exp_X), nlevels(t)), ncol = nlevels(t))
+  nnetRes <- exp_X / sumRow_exp_X
+  # Fix NaN
+  conflictRules <- is.nan(rowSums(nnetRes))
+  if (any(conflictRules)) {
+    nnetRes[conflictRules,] <- t(apply(fp_X_w[conflictRules,, drop = FALSE], 1, function(row) as.numeric(row == max(row)) / sum(row == max(row))))
+  }
+
+  # Compute dsnn : Weights
+
+  dsnn.w <- matrix(0, nrow(w), ncol(w))
+
+  for (i in 2:nlevels(t)) {
+    isClass <- t == levels(t)[i]
+    p1 <- colSums(fp_X_withInt[isClass,, drop = FALSE])
+    dsnn.w[, i - 1] <- dsnn.w[, i - 1] + p1
+  }
+
+  p2 <- t(fp_X_withInt) %*% nnetRes[, 2:nlevels(t)]
+  dsnn.w <- dsnn.w - p2
+
+  # Compute dnn : p param
+  dfp_X <- apply.dfp(simils, p)
+  dfp_X_w <- dfp_X %*% w[-1,] # No intercpet
+  dfp_X_w <- cbind(0, dfp_X_w)
+  dsnn.p <- sum(class.ind(t) * dfp_X_w) - sum(rowSums(exp_X * dfp_X_w) / rowSums(exp_X))
+
+  res <- -c(dsnn.w, dsnn.p)
+  res
+}

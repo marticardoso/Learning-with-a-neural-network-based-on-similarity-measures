@@ -132,7 +132,6 @@ E.binomial <- function(p, simils, t, w, reg = FALSE, lambda = 0) {
   z <- numeric(length(t))
   z[!isClass2] <- ln(1 - nnRes[!isClass2] + 1e-50)
   z[isClass2] <- ln(nnRes[isClass2] + 1e-50)
-  #z <- class.ind(t) * ln(cbind(1 - nnRes, nnRes))
 
   z <- -sum(z) / length(t)
   if (reg) z <- z + 1 / 2 * lambda * (sum(w ^ 2))
@@ -198,8 +197,7 @@ E.multinomial <- function(p, simils, t, w, reg = FALSE, lambda = 0) {
   #  return(res)
   #}))
 
-  #ToDo: fix Na
-  z <- class.ind(t) * ln(nnetRes)
+  z <- class.ind(t) * ln(nnetRes + 1e-50)
   z <- -sum(z) / length(t)
   if (reg) z <- z + 1 / 2 * lambda * (sum(w ^ 2))
   return(z)
@@ -803,16 +801,16 @@ opt2.dE.binomial <- function(p, w, simils, t) {
   res
 }
 
-
 opt2.dE.multinomial <- function(p, w, simils, t) {
   if (p <= 0) return(NA)
   # Compute net result
   fp_X <- apply.fp(simils, p)
-  fp_X_w <- cbind(1, fp_X) %*% w
-  fp_X_w <- cbind(0,fp_X_w)
+  fp_X_withInt <- cbind(1, fp_X)
+  fp_X_w <- fp_X_withInt %*% w
+  fp_X_w <- cbind(0, fp_X_w)
   exp_X <- exp(fp_X_w)
   sumRow_exp_X <- matrix(rep(rowSums(exp_X), nlevels(t)), ncol = nlevels(t))
-  nnetRes <- exp_X / matrix(rep(rowSums(exp_X), nlevels(t)), ncol = nlevels(t))
+  nnetRes <- exp_X / sumRow_exp_X
   # Fix NaN
   conflictRules <- is.nan(rowSums(nnetRes))
   if (any(conflictRules)) {
@@ -820,56 +818,53 @@ opt2.dE.multinomial <- function(p, w, simils, t) {
   }
 
   # Compute dsnn : Weights
-  dsnn.w <- matrix(0, ncol(w), nrow(w))
-  denom <- (nnetRes + sumRow_exp_X ^ 2 + 1e-50)
-  for (i in 1:nlevels(t)) {
+
+  dsnn.w <- matrix(0, nrow(w), ncol(w))
+
+  for (i in 2:nlevels(t)) {
     isClass <- t == levels(t)[i]
-    p1 <- t((exp_X / denom)[isClass, i, drop = FALSE] * sumRow_exp_X[isClass, i, drop = FALSE]) %*% cbind(1, fp_X[isClass,])
-    p1 <- matrix(rep(p1, ncol(w)), nrow = ncol(w), byrow = TRUE)
-    p2 <- -t(matrix(rep(exp_X[, i] / denom[,i], ncol(w)), ncol = ncol(w)) * exp_X[, -1])[, isClass] %*% cbind(1, fp_X[isClass,])
-    dsnn.w <- dsnn.w + (p1 - p2)
+    p1 <- colSums(fp_X_withInt[isClass,, drop = FALSE])
+    dsnn.w[, i - 1] <- dsnn.w[, i - 1] + p1
   }
+
+  p2 <- t(fp_X_withInt) %*% nnetRes[, 2:nlevels(t)]
+  dsnn.w <- dsnn.w - p2
 
   # Compute dnn : p param
   dfp_X <- apply.dfp(simils, p)
-  dfp_X_w <- dfp_X %*% w[-1, ] # No intercpet
+  dfp_X_w <- dfp_X %*% w[-1,] # No intercpet
   dfp_X_w <- cbind(0, dfp_X_w)
+  dsnn.p <- sum(class.ind(t) * dfp_X_w) - sum(rowSums(exp_X * dfp_X_w) / rowSums(exp_X))
 
-
-  sumRow_exp_X <- matrix(rep(rowSums(exp_X), 3), ncol = 3)
-  sumRow_exp_X_dot_dX <- matrix(rep(rowSums(exp_X * dfp_X_w), 3), ncol = 3)
-  dnnetRes <- (sumRow_exp_X * exp_X * dfp_X_w - exp_X * sumRow_exp_X_dot_dX) / sumRow_exp_X ^ 2
-  #Fix nan
-  dnnetRes[is.na(dnnetRes)] <- 0
-
-  dsnn.p <- class.ind(t) * dnnetRes / nnetRes
-  dsnn.p <- sum(dsnn.p)
-  
-
-  res <- -c(as.vector(t(dsnn.w)), dsnn.p)
+  res <- -c(dsnn.w, dsnn.p)
   res
 }
+
 
 optimize_p_oneOpt <- function(simils, t, pInitial = 0.1, ..., trace = TRUE) {
 
   if (is.numeric(t)) {
     E <- E.regression
     dE <- opt2.dE.regression
+    initialW <- numeric(ncol(simils) + 1)
   }
   else if (is.logical(t) || (is.factor(t) && nlevels(t) == 2)) {
     E <- E.binomial
     dE <- opt2.dE.binomial
+    initialW <- numeric(ncol(simils) + 1)
   }
   else if (is.factor(t) && nlevels(t) > 2) {
     E <- E.multinomial
     dE <- opt2.dE.multinomial
+    initialW <- matrix(1, ncol(simils) + 1, nlevels(t) - 1)
   }
   else stop('Not implemented (fp_utils)')
   #Function to optimize
   func <- function(args) {
     n <- length(args)
     p <- args[n]
-    w <- args[1:n - 1]
+    if (is.matrix(initialW)) w <- matrix(args[1:n - 1], ncol = ncol(initialW))
+    else w <- args[1:n - 1]
     E(p=p, simils=simils, t=t, w=w, reg=FALSE)
   }
 
@@ -877,15 +872,16 @@ optimize_p_oneOpt <- function(simils, t, pInitial = 0.1, ..., trace = TRUE) {
   grad <- function(args) {
     n <- length(args)
     p <- args[n]
-    w <- args[1:n - 1]
+    if (is.matrix(initialW)) w <- matrix(args[1:n - 1], ncol = ncol(initialW))
+    else w <- args[1:n - 1]
     dE(p, w, simils, t)
   }
-
-  initialValues <- c(numeric(ncol(simils) + 1), pInitial)
-
+  initialValues <- c(initialW, pInitial)
   res <- optim(initialValues, func, grad, method = "BFGS")
   z <- list()
   z$newP <- res$par[length(res$par)]
+  if (is.matrix(initialW)) z$w <- matrix(res$par[1:length(res$par) - 1], ncol = ncol(initialW))
+  else z$w <- res$par[1:length(res$par) - 1]
   z$E <- res$value
   z
 }
