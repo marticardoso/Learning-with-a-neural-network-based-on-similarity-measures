@@ -171,7 +171,7 @@ snn.fit <- function(x, y, daisyObj = NULL,
   z
 }
 
-snn.createClassificationModel <- function(dataframe, regularization = FALSE, ..., trace = TRUE) {
+snn.createClassificationModel <- function(dataframe, regularization = FALSE, lambdas = NULL, ..., trace = TRUE) {
   y <- model.response(model.frame(Target ~ ., dataframe))
   if (is.logical(y) || (is.factor(y) && nlevels(y) == 2))
     family.type <- "binomial"
@@ -191,13 +191,21 @@ snn.createClassificationModel <- function(dataframe, regularization = FALSE, ...
     if (trace) cat("[Classification] Creating ridge model...\n")
     x <- as.matrix(dataframe[, - which(names(dataframe) %in% c("Target"))])
     y <- dataframe$Target
-    cv.result <- cv.glmnet(x, y, nfolds = 10, family = family.type, alpha = 0, standardize = FALSE)
-    model <- glmnet(x, y, family = family.type, lambda = cv.result$lambda.min[1], alpha = 0, standardize = FALSE)
+    if (is.null(lambdas)) lambdas <- 2 ^ seq(-10, 10, 0.25)
+    else lambdas <- c(lambdas)
+    if (length(lambdas) > 1) {      
+      cv.result <- cv.glmnet(x, y, nfolds = 10, family = family.type, alpha = 0, standardize = FALSE)
+      best.lambda <- cv.result$lambda.min[1]
+    }
+    else {
+      best.lambda <- lambdas[1]
+    }
+    model <- glmnet(x, y, family = family.type, lambda = best.lambda, alpha = 0, standardize = FALSE)
   }
   model
 }
 
-snn.createRegressionModel <- function(dataframe, regularization = FALSE, ..., trace = TRUE) {
+snn.createRegressionModel <- function(dataframe, regularization = FALSE, lambdas = NULL, ..., trace = TRUE) {
   if (!regularization) {
     if (trace) cat("[Regression] Creating lm model...\n")
     model <- lm(Target ~ ., data = dataframe)
@@ -205,10 +213,17 @@ snn.createRegressionModel <- function(dataframe, regularization = FALSE, ..., tr
   else {
     if (trace) cat("[Regression] Creating ridge regression model...\n")
 
-    lambdas <- 2 ^ seq(-10, 10, 0.25)
-    r <- lm.ridge(Target ~ ., dataframe, lambda = lambdas)
-    lambda.id <- which.min(r$GCV)
-    best.lambda <- lambdas[lambda.id]
+    if (is.null(lambdas)) lambdas <- 2 ^ seq(-10, 10, 0.25)
+    else lambdas <- c(lambdas)
+
+    if (length(lambdas) > 1) {
+      r <- lm.ridge(Target ~ ., dataframe, lambda = lambdas)
+      lambda.id <- which.min(r$GCV)
+      best.lambda <- lambdas[lambda.id]
+    }
+    else {
+      best.lambda <- lambdas[1]
+    }
     model <- lm.ridge(Target ~ ., dataframe, lambda = best.lambda)
   }
   model

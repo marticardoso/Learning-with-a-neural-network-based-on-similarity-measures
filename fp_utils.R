@@ -130,10 +130,10 @@ E.multinomial <- function(p, simils, t, w, reg = FALSE, lambda = 0) {
   X <- apply.fp(simils, p)
   X <- cbind(1, X)
   X <- X %*% w
-  X <- cbind(0, X)
+  if(nlevels(t)>ncol(w)) X <- cbind(0, X)
 
   exp_X <- exp(X)
-  nnetRes <- exp_X / matrix(rep(rowSums(exp_X), 3), ncol = 3)
+  nnetRes <- exp_X / matrix(rep(rowSums(exp_X), nlevels(t)), ncol = nlevels(t))
   # Fix NaN
   conflictRules <- is.nan(rowSums(nnetRes))
   if (any(conflictRules)) {
@@ -177,46 +177,33 @@ accuracy.multinomial <- function(p, simils, t, model) {
   return(sum(diag(tab)) / sum(tab))
 }
 
-# Try several initial p, and take the best one.
-optimize_p_initializeP <- function(x.simils,y, x.simils.val = NULL, y.val = NULL,..., trace=TRUE){
-  if(trace) cat('Computing pInitial\n')
-  pInitials <- seq(0.1,2,0.1)
-  E.pInitials <- numeric(length(pInitials)) 
-  for(i in 1:length(pInitials)){
-    model <- optimize_p_create_model_given_p(x.simils, y, pInitials[i],..., trace=trace)
-    if(!is.null(x.simils.val)) 
-      E.pInitials[i] <- E.func.from_model(pInitials[i], x.simils.val, y.val, model)
-    else 
-      E.pInitials[i] <- E.func.from_model(pInitials[i], x.simils, y, model)
-  }
-  z <- list()
-  z$p <- pInitials[which.min(E.pInitials)][1]
-  z$E <- E.pInitials
-  z
-}
-
 # Step 1 of method 1:
 # Create a model given a p value (optimize w given a p value)
 optimize_p_create_model_given_p <- function(simils, y, p, ..., trace=TRUE){
   learn.data <- data.frame(apply.fp(simils, p))
   learn.data$Target <- y
   if(is.factor(y) || is.logical(y)){
-    model <- snn.createClassificationModel(learn.data, p=p, trace=FALSE,...)
+    model <- snn.createClassificationModel(learn.data, trace=FALSE,...)
   }
   else if(is.numeric(y)){
-    model <- snn.createRegressionModel(learn.data, trace=FALSE,p=p, ...)
+    model <- snn.createRegressionModel(learn.data, trace=FALSE, ...)
   }
   return(model)
 }
 
 extractCoefficients <- function(model){
   w <- coef(model)  #Extract w
-  if(any(class(model)=="glmnet")) w <- w[,1]
+  if (any(class(model) == "glmnet")) {
+    if (is.list(w)) w <- t(matrix(unlist(lapply(w, as.matrix)), ncol = length(w)))
+    else w <- w[, 1]
+  }
   # Remove X from names
   if(is.vector(w))
     names(w) <- gsub('X','',names(w)) 
-  else if(is.matrix(w))
-      colnames(w) <- gsub('X','',colnames(w)) 
+  else if (is.matrix(w)) {
+    colnames(w) <- gsub('X', '', colnames(w))
+    w <- t(w)
+  }
   return(w)
 }
 
@@ -249,8 +236,7 @@ optimize_p_test_range_of_values <- function(simils, t, ps = NULL){
 optimize_p_GCV <- function(simils, y, control = NULL,regularization=FALSE,..., trace=TRUE){
   
   if(!is.numeric(y)) stop("Only regression model supported")
-  
-  
+    
   ps <- seq(0.1,2,0.1)
   if(regularization) lambdas <- 10^seq(-5,2,length=50)
   else lambdas <- c(0)
@@ -296,49 +282,58 @@ optimize_p_GCV <- function(simils, y, control = NULL,regularization=FALSE,..., t
 
 
 # Optimize p using k fold cross validation method
-optimize_p_kFoldCV <- function(simils, t, control = NULL,..., trace=TRUE){
-  
+optimize_p_kFoldCV <- function(simils, t, regularization = FALSE, control = NULL,..., trace=TRUE){
   # Extract control info
-  ps <- seq(0.1,2,0.1)
+  ps <- seq(0.1, 2, 0.1)
+  if (regularization) lambdas <- 10 ^ seq(-5, 2, length = 50)
+  else lambdas <- c(0)
   kFolds <- 10
   useAccuracy <- FALSE
   if(!is.null(control)){
-    if(!is.null(control$ps)) ps <- control$ps
+    if (!is.null(control$ps)) ps <- control$ps
+    if (!is.null(control$lambdas)) lambdas <- control$lambdas
     if(!is.null(control$kFolds)) kFolds <- control$kFolds
     if(!is.null(control$useAccuracy)) useAccuracy <- control$useAccuracy
   }
   
   foldid <- sample(rep(seq(kFolds), length = length(t)))
   
-  ps.ObjFunc <- numeric(length(ps))
-  ps.ObjFunc.sd <- numeric(length(ps))
+  ps.ObjFunc <- matrix(0, length(ps), length(lambdas))
+  ps.ObjFunc.sd <- matrix(0, length(ps), length(lambdas))
   
   #Iterate for ps
-  for(i in 1:length(ps)){
-    foldRes <- numeric(kFolds)
-    #Iterate for folds
-    for(k in 1:kFolds){
-      # Split train-val
-      simils_train <- simils[foldid!=k,]
-      t_train <- t[foldid!=k]
-      simils_val <- simils[foldid==k,]
-      t_val <- t[foldid==k]
-      
-      model <- optimize_p_create_model_given_p(simils_train,t_train,ps[i],trace=trace,...)
-      
-      if(!useAccuracy) foldRes[k] <- E.func.from_model(ps[i], simils_val,t_val, model)
-      else foldRes[k] <- accuracyOrNRMSE(ps[i], simils_val,t_val, model)
+  for (i in 1:length(ps)) {
+    #Iterate for lambdas
+    for (j in 1:length(lambdas)) {
+      foldRes <- numeric(kFolds)
+      #Iterate for folds
+      for (k in 1:kFolds) {
+       
+        # Split train-val
+        simils_train <- simils[foldid != k,]
+        t_train <- t[foldid != k]
+        simils_val <- simils[foldid == k,]
+        t_val <- t[foldid == k]
+
+        model <- optimize_p_create_model_given_p(simils_train, t_train, ps[i], regularization = regularization, lambda = lambdas[j], ...)
+        if (!useAccuracy) foldRes[k] <- E.func.from_model(ps[i], simils_val, t_val, model)
+        else foldRes[k] <- accuracyOrNRMSE(ps[i], simils_val, t_val, model)
+        }
+      ps.ObjFunc[i, j] <- mean(foldRes)
+      ps.ObjFunc.sd[i, j] <- sd(foldRes)
+
     }
-    
-    ps.ObjFunc[i] <- mean(foldRes)
-    ps.ObjFunc.sd[i] <- sd(foldRes)
-    
-    if(trace) cat("p= ", ps[i], " - ObjFunc: ", ps.ObjFunc[i], " - sd: ", ps.ObjFunc.sd[i], "\n")
+    if (trace) cat("p= ", ps[i], "\n")
   }
   
   z <- list()
-  z$bestP <- ps[which.min(ps.ObjFunc)[1]]
+  minInd <- which(ps.ObjFunc == min(ps.ObjFunc), arr.ind = TRUE)
+  z$bestP <- ps[minInd[1]]
   z$ps <- ps
+  if (regularization) {
+    z$lambdas <- lambdas
+    z$bestLambda <- lambdas[minInd[2]]
+  }
   z$E <- ps.ObjFunc
   z$E.sd <- ps.ObjFunc.sd
   z
