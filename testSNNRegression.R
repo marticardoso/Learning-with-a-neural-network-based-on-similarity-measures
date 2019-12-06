@@ -35,7 +35,7 @@ sampleTwoThirds <- function(ds){
 ds1 <- read.table('./datasets/regression/airfoil_self_noise.dat')
 colnames(ds1) <- c('frequency', 'angle', 'chord', 'velocity', 'thickness', 'pressure')
 s <- sampleTwoThirds(ds1)
-snn.ds1 <- snn(pressure~.,ds1,subset=s,regularization=FALSE, p.control=list(method='Opt2'))
+snn.ds1 <- snn(pressure~.,ds1,subset=s,regularization=FALSE, p.control=list(method='Opt'))
 snn.ds1$nrmse
 
 #Compare to only lm
@@ -111,7 +111,7 @@ ds6 <- data.frame(read_excel('./datasets/regression/Concrete_Data.xls'))
 colnames(ds6) <- c('Cement','BlastFurnace','FlyAsh','Water','Superplasticizer', 'Coarse','Fine', 'Age','CCS')
 s.d6 <- sampleTwoThirds(ds6)
 #Timeout error
-snn.ds6 <- snn(CCS~.,ds6,subset=s.d6,regularization=FALSE, p.control=list(method='Opt2'))
+snn.ds6 <- snn(CCS~.,ds6,subset=s.d6,regularization=FALSE, p.control=list(method='Opt'))
 snn.ds6$nrmse
 
 #Compare to only lm

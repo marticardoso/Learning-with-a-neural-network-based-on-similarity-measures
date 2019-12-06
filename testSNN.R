@@ -126,7 +126,7 @@ reg.lm$nrmse
 
 reg.lm <- snn(medv ~ ., BostonHousing, subset = s, regularization = FALSE,
               clust.control = list(clust.method = "PAM", nclust.method = "C"),
-              p.control = list(method = 'Opt2'))
+              p.control = list(method = 'Opt'))
 reg.lm$mse
 reg.lm$nrmse
 
