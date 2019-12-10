@@ -1,6 +1,5 @@
 
 dyn.load("daisy/daisy2.dll")
-cl_daisy <-"cldaisy"
 dissiCl <- c("dissimilarity", "dist")
 
 daisy2 <- function(x, metric = c("euclidean", "manhattan", "gower"),
@@ -149,7 +148,7 @@ daisy2 <- function(x, metric = c("euclidean", "manhattan", "gower"),
   }
   ## call Fortran routine
   storage.mode(x) <- "double"
-  disv <- .Fortran(cl_daisy, ## -> ../src/daisy.f
+  disv <- .Fortran("cldaisy2", ## -> ../src/daisy.f
                    n,
                    p,
                    x,

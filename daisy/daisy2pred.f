@@ -1,11 +1,12 @@
 
-      subroutine cldaisy2(nn,jpp, x, valmd,weights,
+      subroutine cldaisy2pred(nn, pnn, jpp, x, valmd,weights,
      +     jtmd,jdat,vtype,ndyst,mdata, disv)
 c     c
 c     c  Calculating dissimilarities between objects or variables
 c     c
 
       integer nn, jpp
+      integer pnn
 c     c          nn  = number of objects
 c     c          jpp = number of variables used for the calculations
 
@@ -51,6 +52,8 @@ c Case I: `mixed' type variables
                nlk=nlk+1
                ppa=0.
                dlk=0.
+               if(k.lt.pnn .and. l.lt.pnn) goto 440
+               if(k.ge.pnn .and. l.ge.pnn) goto 440
 c               Dissimilarity between obs.  l & k
                do 420 j=1,jpp
                   if(vtype(j) .ge. 3) then

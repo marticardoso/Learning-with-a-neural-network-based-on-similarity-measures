@@ -32,7 +32,7 @@ snn.bagging <- function(formula, data, subset = NULL, nSNN = 10,
   myToc(label = 'Daisy')
 
   if (trace) cat('Computing Models \n')
-  howManyRows <- function() max(50, ceiling(nrow(data.train) * runif(1) / 2))
+  howManyRows <- function() min(4000,max(50, ceiling(nrow(data.train) * runif(1) / 2)))
 
   snn.sets <- lapply(1:nSNN, function(i) {
     nrows <- howManyRows()
@@ -183,17 +183,22 @@ snn.bagging.fit.second.layer <- function(data.train.input, y, snn.sets, daisyObj
 predict.snn.bagging = function(object, newdata, type = c("response", "prob")) {
   mf <- model.frame(object$formula, newdata, na.action = NULL)
   x <- mf[, -1]
-
+  print('Computing test responses')
   nmodels <- length(object$snn.sets)
-  snn.sets.pred <- lapply(1:nmodels, function(i) predict(object$snn.sets[[i]], newdata, type = "prob"))
+  snn.sets.pred <- lapply(1:nmodels, function(i) {
+    cat(c("Response", i))
+    tmp <- predict(object$snn.sets[[i]], newdata, type = "prob")
+    return(tmp)})
   gsnn.sets.pred <<- snn.sets.pred
+
+  print('Join results (responses)')
   #Transform to dataset
   bagging.ds <- data.frame(row.names = row.names(newdata))
   for (snn.i.pred in snn.sets.pred)
     bagging.ds <- cbind(bagging.ds, snn.i.pred)
   colnames(bagging.ds) <- 1:ncol(bagging.ds)
   
-
+  print('SNN Bagging methods')
 
   # Max vote and mean
   if (object$fit2layer$method == 'A') {

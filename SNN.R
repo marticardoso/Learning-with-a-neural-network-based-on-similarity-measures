@@ -354,6 +354,7 @@ summary.snn <- function(object) {
 }
 
 predict.snn = function(object, newdata, type = c("response", "prob"), daisyObj = NULL, ...) {
+  print('Predicting SNN')
   if (ncol(object$prototypes)+1 == ncol(newdata)) {
     mf <- model.frame(object$formula, newdata, na.action = NULL)
     x <- mf[, -1]
@@ -363,24 +364,22 @@ predict.snn = function(object, newdata, type = c("response", "prob"), daisyObj =
     x <- newdata
   }
   else stop('Invalid new data')
-  
-
-  nprot <- nrow(object$prototypes)
-  compute.daisy <- function(newX, prototypes) {
-    diss <- daisy2.newObservations(rbind(newX, prototypes), object$daisyObj)
-    return(as.matrix(diss)[1,-1])
-  }
-
+  #compute.daisy <- function(newX, prototypes) {
+  #  diss <- daisy2.newObservations(rbind(newX, prototypes), object$daisyObj)
+  #  return(as.matrix(diss)[1,-1])
+  #}
+  print('Computing daisy')
   if (is.null(daisyObj) || !is.dissimilarity(daisyObj)) {
-    x.daisy <- t(sapply(1:nrow(x), function(row) compute.daisy(x[row,], object$prototypes)))
+    #x.daisy <- t(sapply(1:nrow(x), function(row) compute.daisy(x[row,], object$prototypes)))
+    x.daisy <- daisy2.newObservations(x, object$daisyObj, newdata = object$prototypes)
+    x.daisy <- as.matrix(x.daisy)
+    x.daisy <- x.daisy[1:nrow(x), (nrow(x) + 1):nrow(x.daisy)]
   }
   else {
     x.daisy <- as.matrix(daisyObj)[rownames(x), rownames(object$prototypes)]
   }
-
-  # newDataAndProt <- rbind(x,object$prototypes)
-  # x.daisy <- daisy2.newObservations(newDataAndProt, object$daisyObj)
-  #x.daisy <- as.matrix(x.daisy)[1:nrow(x), (nrow(x)+1):nrow(newDataAndProt)]
+  print('DONE!')
+  
   x.simils <- 1 - x.daisy
 
   test.x <- data.frame(apply.fp(x.simils, object$p))

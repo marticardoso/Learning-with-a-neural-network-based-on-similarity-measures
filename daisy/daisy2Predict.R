@@ -1,11 +1,11 @@
 
-dyn.load("daisy/daisy2.dll")
-cl_daisy <-"cldaisy"
+dyn.load("daisy/daisy2pred.dll")
+#dyn.unload("daisy/daisy2pred.dll")
 dissiCl <- c("dissimilarity", "dist")
 
 
 # Only for gower
-daisy2.newObservations <- function(x, daisyObj)
+daisy2.newObservations <- function(x, daisyObj, newdata = NULL)
 {
   ## check type of input matrix
   if(length(dx <- dim(x)) != 2 || !(is.data.frame(x) || is.numeric(x)))
@@ -23,6 +23,8 @@ daisy2.newObservations <- function(x, daisyObj)
   
   ndyst <- daisyObj$ndyst
   jdat <- daisyObj$jdat
+  nX <- nrow(x)
+  if (!is.null(newdata)) x <- rbind(x, newdata)
   n <- nrow(x)
   p  <- ncol(x)
   if(p != daisyObj$p)
@@ -68,20 +70,40 @@ daisy2.newObservations <- function(x, daisyObj)
   
   ## call Fortran routine
   storage.mode(x) <- "double"
-  disv <- .Fortran(cl_daisy, ## -> ../src/daisy.f
+  if (n > nX) {
+    disv <- .Fortran("cldaisy2pred", ## -> ../src/daisy.f
+                   n,
+                   as.integer(nX + 1),
+                   p,
+                   x,
+                   if (mdata) rep(valmisdat, p) else double(1),
+                   as.double(weights),
+                   if (mdata) jtmd else integer(1),
+                   jdat,
+                   type3, # vtype
+                   ndyst,
+                   as.integer(mdata),
+                   dis = double((n * (n - 1)) / 2),
+                   NAOK = TRUE # only to allow "+- Inf"
+    )$dis
+  }
+  else {
+    print('Computing full daisy matrix')
+    disv <- .Fortran("cldaisy2", ## -> ../src/daisy.f
                    n,
                    p,
                    x,
-                   if(mdata) rep(valmisdat, p) else double(1),
+                   if (mdata) rep(valmisdat, p) else double(1),
                    as.double(weights),
-                   if(mdata) jtmd else integer(1),
+                   if (mdata) jtmd else integer(1),
                    jdat,
-                   type3,		# vtype
+                   type3, # vtype
                    ndyst,
                    as.integer(mdata),
-                   dis = double((n * (n - 1))/2),
-                   NAOK = TRUE# only to allow "+- Inf"
-  )$dis
+                   dis = double((n * (n - 1)) / 2),
+                   NAOK = TRUE # only to allow "+- Inf"
+    )$dis
+  }
   ## adapt Fortran output to S:
   ## convert lower matrix, read by rows, to upper matrix, read by rows.
   disv[disv == -1] <- NA

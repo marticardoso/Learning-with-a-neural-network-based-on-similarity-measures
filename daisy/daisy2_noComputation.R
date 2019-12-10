@@ -1,8 +1,3 @@
-
-dyn.load("daisy/daisy2.dll")
-cl_daisy <-"cldaisy"
-dissiCl <- c("dissimilarity", "dist")
-
 daisy2_noComputation <- function(x, metric = c("euclidean", "manhattan", "gower"),
                             stand = FALSE, type = list(), weights = rep.int(1, p), fixUnbalancedDiss = TRUE,
                             warnBin = warnType, warnAsym = warnType, warnConst = warnType, warnType = TRUE)
