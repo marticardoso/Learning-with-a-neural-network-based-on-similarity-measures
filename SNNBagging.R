@@ -6,7 +6,7 @@ source('MoE.R')
 
 snn.bagging <- function(formula, data, subset = NULL, nSNN = 10,
   simil.types = list(), regularization = FALSE, snn.reg = FALSE,
-  runDaisyOnce = TRUE,
+  runDaisyOnce = FALSE,
   useGlobalDaisyTransformations = TRUE,
   ..., trace = TRUE) {
   if (!is.null(subset) && length(subset) < nrow(data)) data.train <- data[subset,]

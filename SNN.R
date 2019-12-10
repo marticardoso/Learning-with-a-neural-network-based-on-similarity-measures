@@ -75,49 +75,72 @@ snn.fit <- function(x, y, daisyObj = NULL,
   if (ncol(x) == 0L) stop("Null model")
   ny <- NCOL(y)
 
-  if (is.null(daisyObj)) {
-    if (trace) cat('[Computing daisy dissimilarity]')
-    daisyObj <- x.daisy <- daisy2(x, metric = "gower", type = simil.types)
+  shouldComputeDaisyBeforeClustering <- snn.findclusters.needsDaisy(clust.control) || (!is.null(p.control) && p.control$method == 'G')
+  if (shouldComputeDaisyBeforeClustering) {
+    if (is.null(daisyObj)) {
+        if (trace) cat('[Computing daisy dissimilarity]\n')
+        daisyObj <- x.daisy <- daisy2(x, metric = "gower", type = simil.types)
+    }
+    else if (is.dissimilarity(daisyObj)) {
+      if (trace) cat('[dissimilarity passed as parameter]\n')
+      x.daisy <- as.matrix(daisyObj)[rownames(x), rownames(x)]
+    }
+    else {
+      if (trace) cat('[Computing daisy dissimilarity (using global sx)]\n')
+      x.daisy <- daisy2.newObservations(x, daisyObj)
+    }
+    clust.data <- x.daisy
   }
-  else if (is.dissimilarity(daisyObj)) {
-    if (trace) cat('[dissimilarity passed as parameter]')
-    x.daisy <- as.matrix(daisyObj)[rownames(x), rownames(x)]
-  }
-  else {
-    if (trace) cat('[Computing daisy dissimilarity (using global sx)]')
-    x.daisy <- daisy2.newObservations(x, daisyObj)
-  }
-  x.simils <- 1 - as.matrix(x.daisy)
-  clust.data <- x.daisy
+  else clust.data <- NULL
 
-  findclusters.res <- snn.findclusters(clust.data, control = clust.control, ..., trace = trace)
+  findclusters.res <- snn.findclusters(nrow(x), clust.data, control = clust.control, ..., trace = trace)
   id.medoid <- findclusters.res$id.med
 
   prototypes <- x[id.medoid,]
+  # Daisy only with prototypes
+  if (!shouldComputeDaisyBeforeClustering) {
+    if (is.null(daisyObj)) daisyObj <- daisy2_noComputation(x, metric = "gower", type = simil.types)
+
+    if (is.dissimilarity(daisyObj)) {
+      if (trace) cat('[Dissimilarity passed as parameter]')
+      x.daisy <- as.matrix(daisyObj)[rownames(x), rownames(prototypes)]
+    }
+    else {
+      if (trace) cat('[Computing daisy dissimilarity (using global sx and only prototypes)]')
+      x.daisy <- daisy2.newObservations(prototypes, daisyObj, newdata = x)
+      x.daisy <- as.matrix(x.daisy)
+      x.daisy <- x.daisy[(nrow(prototypes) + 1):nrow(x.daisy),  1:nrow(prototypes)]
+    }
+    x.simils <- 1 - as.matrix(x.daisy)
+  }
+  else {
+    x.simils <- 1 - as.matrix(x.daisy)[, id.medoid]
+  }
 
   if (!is.null(p.control)) {
     if (trace) cat('[Optimization of p] Method: ', p.control$method, '\n')
     if (p.control$method == 'Opt') {
-      optRes <- optimize_p_oneOpt(x.simils[, id.medoid], y, pInitial = p)
+      optRes <- optimize_p_oneOpt(x.simils, y, pInitial = p)
       p <- optRes$newP
     }
     else if (p.control$method == 'CV') {
-      optRes <- optimize_p_kFoldCV(x.simils[, id.medoid], y, control = p.control, ..., trace = trace)
+      optRes <- optimize_p_kFoldCV(x.simils, y, control = p.control, ..., trace = trace)
       p <- optRes$bestP
     }
     else if (p.control$method == 'GCV') {
-      optRes <- optimize_p_GCV(x.simils[, id.medoid], y, control = p.control, ..., trace = trace)
+      optRes <- optimize_p_GCV(x.simils, y, control = p.control, ..., trace = trace)
       p <- optRes$bestP
     }
     else if (p.control$method == 'G') {
-      optRes <- optimize_p_method3(1 - x.simils, findclusters.res, type = p.control$type)
+      stop('ToDo: x.simils is not complete')
+      optRes <- optimize_p_method3(as.matrix(x.daisy), findclusters.res, type = p.control$type)
       if (is.numeric(optRes)) p <- optRes
       else p <- optRes$avg
       }
     else if(!is.null(p.control$method)) stop('Invalid optimization of p method')
   }
   if (trace) cat('Using p=', p, '\n')
-  learn.data <- data.frame(apply.fp(x.simils[, id.medoid], p))
+  learn.data <- data.frame(apply.fp(x.simils, p))
 
   if (standardizeSimils) {
     dataScaled <- scale(learn.data)
@@ -165,7 +188,7 @@ snn.fit <- function(x, y, daisyObj = NULL,
     z$dissim <- x.daisy
     z$dissim.matrix <- as.matrix(x.daisy)
     z$simil.matrix <- x.simils
-    z$simil.matrix.prot <- x.simils[, id.medoid]
+    #z$simil.matrix.prot <- x.simils[, id.medoid]
     z$findclusters.res <- findclusters.res
   }
   z
@@ -229,6 +252,11 @@ snn.createRegressionModel <- function(dataframe, regularization = FALSE, lambdas
   model
 }
 
+snn.findclusters.needsDaisy <- function(control = NULL) {
+  clust.method <- 'PAM'
+  if (!is.null(control) && !is.null(control$clust.method)) clust.method <- control$clust.method
+  return(clust.method == 'PAM')
+}
 #Function to find the clusters
 # - control
 #   - clust.method: method used to find clusters (PAM or Random)
@@ -236,7 +264,7 @@ snn.createRegressionModel <- function(dataframe, regularization = FALSE, lambdas
 #   - clust.stand: when PAM, wheter the data is standarized or not (default false)
 #   - nclust.method: method to find the number of clusters
 #   - hp: hyper-parameter used to find the number of clusters (Estimation of the proportion of clusters)
-snn.findclusters <- function(clust.data, #Dataset
+snn.findclusters <- function(N, clust.data, #Dataset
                              control = NULL,
                              ..., trace = TRUE) {
   # Load info from control
@@ -253,7 +281,6 @@ snn.findclusters <- function(clust.data, #Dataset
     if (!is.null(control$nclust.method)) nclust.method <- control$nclust.method
     }
 
-  N <- nrow(as.matrix(clust.data))
   M <- snn.numberOfClusters(N, hp = hp, nclust.method = nclust.method, trace = trace)
 
   if (clust.method == "PAM") {
