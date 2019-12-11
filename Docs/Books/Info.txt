@@ -1,0 +1,6 @@
+
+# Pattern Recognition And Machine Learning - Bishop - Springer  2006
+
+# Neural Network for Patter Recognition - Christopher M Bishop
+
+- Mixture of experts (pag. 369)
