@@ -57,7 +57,7 @@ s <- snn(Type~.
 s <- sample(nrow(wine), 100)
 
 set.seed(1234)
-r1 <- snn(Type ~ ., wine, subset = s, regularization = FALSE, standardizeSimils = TRUE, x = TRUE)
+r1 <- snn(Type ~ ., wine, subset = s, regularization = FALSE, standardizeSimils = TRUE)
 r1$testContingencyTable
 r1$testAccuracy
 summary(r1)

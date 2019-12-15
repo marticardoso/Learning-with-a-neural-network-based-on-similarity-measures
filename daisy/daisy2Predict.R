@@ -1,4 +1,3 @@
-
 dyn.load("daisy/daisy2pred.dll")
 #dyn.unload("daisy/daisy2pred.dll")
 dissiCl <- c("dissimilarity", "dist")
@@ -23,6 +22,7 @@ daisy2.newObservations <- function(x, daisyObj, newdata = NULL)
   
   ndyst <- daisyObj$ndyst
   jdat <- daisyObj$jdat
+  oldX <- x
   nX <- nrow(x)
   if (!is.null(newdata)) x <- rbind(x, newdata)
   n <- nrow(x)
@@ -50,12 +50,13 @@ daisy2.newObservations <- function(x, daisyObj, newdata = NULL)
   }
   ## standardize, if necessary
   if(jdat == 2L) { # All numerical and not gower
-    if(stand)
+    if (stand) {
       x <- scale(x, center = colmean, scale = sx)
-  }
-  else  ## mixed case or explicit "gower"
+    }
+  } else {
+    ## mixed case or explicit "gower"
     x <- scale(x, center = colmin, scale = sx)
-  
+  }
   typeCodes <- c('A','S','N','O','I','T')
   ##              1   2   3   4   5   6  --> passed to Fortran below
   type3 <- match(type2, typeCodes)# integer
@@ -71,9 +72,10 @@ daisy2.newObservations <- function(x, daisyObj, newdata = NULL)
   ## call Fortran routine
   storage.mode(x) <- "double"
   if (n > nX) {
+    nND <- nrow(newdata)
     disv <- .Fortran("cldaisy2pred", ## -> ../src/daisy.f
-                   n,
-                   as.integer(nX + 1),
+                   nX,
+                   as.integer(nND),
                    p,
                    x,
                    if (mdata) rep(valmisdat, p) else double(1),
@@ -83,9 +85,16 @@ daisy2.newObservations <- function(x, daisyObj, newdata = NULL)
                    type3, # vtype
                    ndyst,
                    as.integer(mdata),
-                   dis = double((n * (n - 1)) / 2),
+                   dis = double((nX * nND)),
                    NAOK = TRUE # only to allow "+- Inf"
     )$dis
+
+    ## adapt Fortran output to S:
+    ## convert lower matrix, read by rows, to upper matrix, read by rows.
+    disv[disv == -1] <- NA
+    disv <- t(matrix(disv, nX, nND, byrow = TRUE))
+    rownames(disv) <- rownames(newdata)
+    colnames(disv) <- rownames(oldX)
   }
   else {
     print('Computing full daisy matrix')
@@ -103,14 +112,14 @@ daisy2.newObservations <- function(x, daisyObj, newdata = NULL)
                    dis = double((n * (n - 1)) / 2),
                    NAOK = TRUE # only to allow "+- Inf"
     )$dis
+    ## adapt Fortran output to S:
+    ## convert lower matrix, read by rows, to upper matrix, read by rows.
+    disv[disv == -1] <- NA
+    full <- matrix(0, n, n)
+    full[!lower.tri(full, diag = TRUE)] <- disv
+    disv <- t(full)[lower.tri(full)]
   }
-  ## adapt Fortran output to S:
-  ## convert lower matrix, read by rows, to upper matrix, read by rows.
-  disv[disv == -1] <- NA
-  full <- matrix(0, n, n)
-  full[!lower.tri(full, diag = TRUE)] <- disv
-  disv <- t(full)[lower.tri(full)]
-  
+ 
   if(daisyObj$applySqrt) disv <- sqrt(disv)
   if(daisyObj$applySqure) disv <- disv^2
   
@@ -118,11 +127,13 @@ daisy2.newObservations <- function(x, daisyObj, newdata = NULL)
   if(anyNA(disv)) attr(disv, "NA.message") <- "NA-values in the dissimilarity matrix !"
   
   ## construct S object -- "dist" methods are *there* !
-  class(disv) <- dissiCl 
-  attr(disv, "Size") <- n
-  attr(disv, "Metric") <- daisyObj$metric
-  attr(disv, "Labels") <- dimnames(x)[[1]]
-  if (!daisyObj$ndyst) attr(disv, "Types") <- typeCodes[daisyObj$type3]
+  if (n == nX) {
+    class(disv) <- dissiCl
+    attr(disv, "Size") <- n
+    attr(disv, "Metric") <- daisyObj$metric
+    attr(disv, "Labels") <- dimnames(x)[[1]]
+    if (!daisyObj$ndyst) attr(disv, "Types") <- typeCodes[daisyObj$type3]
+  }
 
   disv
 }

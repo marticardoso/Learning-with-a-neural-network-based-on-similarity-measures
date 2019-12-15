@@ -109,7 +109,7 @@ snn.fit <- function(x, y, daisyObj = NULL,
       if (trace) cat('[Computing daisy dissimilarity (using global sx and only prototypes)]')
       x.daisy <- daisy2.newObservations(prototypes, daisyObj, newdata = x)
       x.daisy <- as.matrix(x.daisy)
-      x.daisy <- x.daisy[(nrow(prototypes) + 1):nrow(x.daisy),  1:nrow(prototypes)]
+      #x.daisy <- x.daisy[(nrow(prototypes) + 1):nrow(x.daisy),  1:nrow(prototypes)]
     }
     x.simils <- 1 - as.matrix(x.daisy)
   }
@@ -208,7 +208,7 @@ snn.createClassificationModel <- function(dataframe, regularization = FALSE, lam
   }
   else if (!regularization && family.type == "multinomial") {
     if (trace) cat("[Classification] Creating multinom model...\n")
-    model <- multinom(Target ~ ., data = dataframe, trace = FALSE, maxit = 500, abstol = 1e-6, ...)
+    model <- multinom(Target ~ ., data = dataframe, trace = FALSE, maxit = 500, abstol = 1e-6, MaxNWts = 10000, ...)
   }
   else {
     if (trace) cat("[Classification] Creating ridge model...\n")
@@ -398,9 +398,9 @@ predict.snn = function(object, newdata, type = c("response", "prob"), daisyObj =
   print('Computing daisy')
   if (is.null(daisyObj) || !is.dissimilarity(daisyObj)) {
     #x.daisy <- t(sapply(1:nrow(x), function(row) compute.daisy(x[row,], object$prototypes)))
-    x.daisy <- daisy2.newObservations(x, object$daisyObj, newdata = object$prototypes)
+    x.daisy <- daisy2.newObservations(object$prototypes, object$daisyObj, newdata = x)
     x.daisy <- as.matrix(x.daisy)
-    x.daisy <- x.daisy[1:nrow(x), (nrow(x) + 1):nrow(x.daisy)]
+    #x.daisy <- x.daisy[1:nrow(x), (nrow(x) + 1):nrow(x.daisy)]
   }
   else {
     x.daisy <- as.matrix(daisyObj)[rownames(x), rownames(object$prototypes)]

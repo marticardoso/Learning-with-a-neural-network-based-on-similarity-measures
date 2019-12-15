@@ -15,7 +15,7 @@ sum(tmpV - tmpV2) # Should be 0
 
 predTmp <- daisy2.newObservations(wine[20:25,], attr(tmp, 'daisyObj'), wine[26:30,])
 tmpV2 <- 1 - as.matrix(predTmp)
-tmpV - tmpV2 # Should be 0 in the queried similarities
+tmpV[7:11, 1:6] - tmpV2 # Should be 0 in the queried similarities
 
 dObj <- daisy2_noComputation(wine[20:30,], metric = "gower", fixUnbalancedDiss = FALSE)
 

@@ -12,9 +12,9 @@ c     c          jpp = number of variables used for the calculations
 
 c     c  The following vectors and matrices must be dimensioned in the
 c     c  main program :
-      double precision x(nn,jpp), valmd(jpp), weights(jpp)
+      double precision x(nn+pnn,jpp), valmd(jpp), weights(jpp)
       integer jtmd(jpp), jdat, vtype(jpp), ndyst, mdata
-      double precision disv(1+nn*(nn-1)/2)
+      double precision disv(1+nn*pnn)
 
 c       vtype was character originally
 c       vtype(j) is the type of variable j:
@@ -46,14 +46,12 @@ c         calculation of the dissimilarities
       if(jdat .eq. 1) then
 c Case I: `mixed' type variables
          nbad=0
-         do 450 l=2,nn
+         do 450 l=1,nn
             la=l-1
-            do 440 k=1,la
+            do 440 k=nn+1,nn+pnn
                nlk=nlk+1
                ppa=0.
                dlk=0.
-               if(k.lt.pnn .and. l.lt.pnn) goto 440
-               if(k.ge.pnn .and. l.ge.pnn) goto 440
 c               Dissimilarity between obs.  l & k
                do 420 j=1,jpp
                   if(vtype(j) .ge. 3) then
