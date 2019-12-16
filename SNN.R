@@ -380,7 +380,7 @@ summary.snn <- function(object) {
   }
 }
 
-predict.snn = function(object, newdata, type = c("response", "prob"), daisyObj = NULL, ...) {
+predict.snn = function(object, newdata, type = c("response", "prob", "simils"), daisyObj = NULL, ...) {
   print('Predicting SNN')
   if (ncol(object$prototypes)+1 == ncol(newdata)) {
     mf <- model.frame(object$formula, newdata, na.action = NULL)
@@ -456,6 +456,9 @@ predict.snn = function(object, newdata, type = c("response", "prob"), daisyObj =
   if ("prob" %in% type && (object$outputType == "logical" || object$outputType == "factor"))
     z$prob <- test.prob
 
+  if ("simils" %in% type) {
+    z$simils <- x.simils
+  }
   if (length(z) == 1)
     return(z[[1]])
 

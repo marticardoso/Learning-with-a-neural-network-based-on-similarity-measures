@@ -33,8 +33,7 @@ MoE.predict <- function(object, x, snnX) {
   z
 }
 
-MoE.optimize <- function(x, snnX, t, type, bIni = NULL, predByM = NULL) {
-  # predByM: a list containing the features of x that can be used in each SNN
+MoE.optimize <- function(x, snnX, t, type, bIni = NULL) {
   m <- ncol(snnX)
   p <- ncol(x)
   x <- data.matrix(x)
@@ -56,58 +55,27 @@ MoE.optimize <- function(x, snnX, t, type, bIni = NULL, predByM = NULL) {
   else
     stop('Not yet implemented :)')
 
-  if (is.null(predByM)) { # predByM is null, use all ps
-    predByM <- list()
-    for (i in 1:m)
-      predByM[[i]] <- 1:p
-  }
 
-  # Given a vector of optimized arguments, it computes the corresponding matrix p x m (taking into account predByM)
-  extractBFromArgs <- function(args) {
-    b <- matrix(0, p + 1, m)
-    ctr <- 1
-    for (i in 1:length(predByM)) {
-      nI <- length(predByM[[i]])
-      b[1, i] <- args[ctr]
-      ctr <- ctr+1
-      b[1 + predByM[[i]], i] <- args[ctr:(ctr + nI - 1)]
-      ctr <- ctr + nI
-    }
-    b
-  }
-
-  # Given a matrix, it returns a vector containing only the relevant coefficients.
-  BToVector <- function(b) {
-    r <- c()
-    for (i in 1:length(predByM)) {
-      r <- c(r, b[c(1, predByM[[i]] + 1), i])
-    }
-    r
-  }
-
-  # Objective function
   func <- function(args) {
-    b2 <- extractBFromArgs(args)
+    b2 <- matrix(args, p + 1, m)
     MoE.E(x = x, snnX = snnX, t = t, b = b2)
   }
 
-  #Gradient function
   grad <- function(args) {
-    b2 <- extractBFromArgs(args)
-    r <- -(MoE.dE(x = x, snnX = snnX, t = t, b = b2))
-    BToVector(r)
+    b2 <- matrix(args, p + 1, m)
+    - as.vector(MoE.dE(x = x, snnX = snnX, t = t, b = b2))
   }
 
-  if (is.null(bIni)) bIni <- vector("numeric", length = length(unlist(predByM)) + m)
+  if (is.null(bIni)) bIni <- vector("numeric", length = m * (p + 1))
   res <- optim(bIni, func, grad, method = "BFGS")
 
   z <- list()
-  z$b <- extractBFromArgs(res$par)
+  z$b <- matrix(res$par, p + 1, m)
   z$type <- type
   if (type == "multinomial") {
     z$numLevels <- nlevels(t)
   }
-  class(z) <- "MoE"
+  class(z) <- "MoE2"
   z
 }
 
@@ -150,13 +118,13 @@ MoE.dE.regression <- function(x, snnX, t, b) {
   y <- bettas * snnX
 
   E <- (rowSums(y) - t)
-  if (any(is.infinite(exp_o1))) exp_o1 <- o1
+
   sumRow_snn_exp_o1 <- rowSums(snnX * exp_o1)
   sumRow_exp_o1 <- rowSums(exp_o1)
   sumRow_exp_o1_2 <- sumRow_exp_o1 ^ 2
 
 
-  E_sumRow_exp_o1__div__sumRow_exp_o1_2 <- E / sumRow_exp_o1
+  E_sumRow_exp_o1__div__sumRow_exp_o1_2 <- sumRow_exp_o1 * E / sumRow_exp_o1_2
   E_sumRow_snn_exp_o1__div__sumRow_exp_o1_2 <- E * sumRow_snn_exp_o1 / sumRow_exp_o1_2
 
   res <- -(t(cbind(1, x)) %*% (snnX * exp_o1 * matrix(rep(E_sumRow_exp_o1__div__sumRow_exp_o1_2, M), ncol = M))

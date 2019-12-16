@@ -17,11 +17,7 @@ t <- matrix(10, 1, n)
 snnX <- matrix(2, n, m)
 snnX[,1] <- 10
 (o <- MoE.E.regression(x, snnX, t, b))
-(o2 <- MoE.dE.regression_for(x, snnX, t, b))
-(o3 <- MoE.dE.regression_semifor(x, snnX, t, b))
 (o4 <- MoE.dE.regression(x, snnX, t, b))
-sum(abs(o2 - o3))
-sum(abs(o2 - o4))
 matrix(as.vector(o), p + 1, m)
 
 
@@ -46,8 +42,8 @@ func(res$par) # Should be 0
 
 
 # Test optimization
-
-MoE.optimize(x, snnX, t, 'numeric')
+predByM <- list(1:2, 1, 3, 1:3, 2:3)
+MoE.optimize(x, snnX, t, 'numeric', predByM = predByM)
 
 
 ##################################
@@ -94,7 +90,7 @@ MoE.E.binomial(x, snnX, t, r$b)
 t <- factor(t,levels = c('TRUE','FALSE'))
 (o <- MoE.E.binomial(x, snnX, t, b))
 (o2 <- MoE.dE.binomial(x, snnX, t, b))
-r <- MoE.optimize(x, snnX, t, 'binomial')
+r <- MoE.optimize(x, snnX, t, 'binomial', predByM = predByM)
 MoE.E.binomial(x, snnX, t, r$b)
 
 ##################################
@@ -140,8 +136,7 @@ func(res$par)
 
 # Test optimization
 
-r <- MoE.optimize(x, snnX, t, 'multinomial')
+r <- MoE.optimize(x, snnX, t, 'multinomial', predByM = predByM)
 MoE.E.multinomial(x, snnX, t, r$b)
-MoE.optimize(x, snnX, t, 'multinomial', bIni = as.vector(b))
-newB
-
+r2 <- MoE.optimize(x, snnX, t, 'multinomial', bIni = as.vector(r$b))
+MoE.E.multinomial(x, snnX, t, r2$b)

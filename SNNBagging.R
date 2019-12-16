@@ -92,6 +92,11 @@ snn.bagging <- function(formula, data, subset = NULL, nSNN = 10,
 
 snn.bagging.fit.second.layer <- function(data.train.input, y, snn.sets, daisyObject, bagging.method = 'B', regularization=FALSE, ..., trace = TRUE) {
 
+  z <- list()
+  z$method <- bagging.method
+  z$problemType <- getTypeOfProblem(y)
+  z$regularization <- regularization
+
   if (trace) cat('Fitting second layer... ')
 
   if (trace) cat('Computing output for all models (Bagging) \n')
@@ -99,22 +104,37 @@ snn.bagging.fit.second.layer <- function(data.train.input, y, snn.sets, daisyObj
   if (bagging.method == 'B' || bagging.method == 'C') {
 
     myTic()
-    snn.sets.pred <- lapply(1:length(snn.sets), function(i) predict(snn.sets[[i]], data.train.input, type = "prob", daisyObj = daisyObject))
-
-
+    snn.sets.pred <- lapply(1:length(snn.sets), function(i) predict(snn.sets[[i]], data.train.input, type = c("prob", "simils"), daisyObj = daisyObject))
 
     bagging.ds <- data.frame(row.names = row.names(data.train.input))
-    for (snn.i.pred in snn.sets.pred)
-      bagging.ds <- cbind(bagging.ds, snn.i.pred)
+    for (snn.i.pred in snn.sets.pred) {
+      if (z$problemType == "numeric") {
+        bagging.ds <- cbind(bagging.ds, snn.i.pred$response)
+      } else {
+        bagging.ds <- cbind(bagging.ds, snn.i.pred$prob)
+      }
+    }
     colnames(bagging.ds) <- 1:ncol(bagging.ds)
-   
+
+    if (bagging.method == 'C') {
+      simils.ds <- data.frame(row.names = row.names(data.train.input))
+      for (i in 1:length(snn.sets.pred)) {
+        simils.ds <- cbind(simils.ds, snn.sets.pred[[i]]$simils)
+      }
+      colnames(simils.ds) <- 1:ncol(simils.ds)
+
+      predByM <- list()
+      counter <- 1
+      for (i in 1:length(snn.sets.pred)) {
+        nC <- ncol(snn.sets.pred[[i]]$simils)
+        predByM[[i]] <- counter:(counter + nC - 1)
+        counter <- counter + nC
+      }
+    }
     myToc()
   }
 
-  z <- list()
-  z$method <- bagging.method
-  z$problemType <- getTypeOfProblem(y)
-  z$regularization <- regularization
+ 
   cat(c('Problem type: ', z$problemType, ' - Method', bagging.method,'\n'))
   if (bagging.method == 'A' || bagging.method == 'A2') {
     # Nothing to do
@@ -156,19 +176,19 @@ snn.bagging.fit.second.layer <- function(data.train.input, y, snn.sets, daisyObj
   else if (bagging.method == 'C') {
     if (z$problemType == 'numeric') {
       if (!regularization) {
-        z$model <- MoE.optimize(data.train.input, bagging.ds, y, 'numeric')
+        z$model <- MoE.optimize(simils.ds, bagging.ds, y, 'numeric', predByM = predByM)
       }
       else stop('Not yet implemented')
       }
     else if (z$problemType == 'binomial') {
       if (!regularization) {
-        z$model <- MoE.optimize(data.train.input, bagging.ds, y, 'binomial')
+        z$model <- MoE.optimize(simils.ds, bagging.ds, y, 'binomial', predByM = predByM)
       }
       else stop('Not yet implemented')
       }
     else if (z$problemType == 'multinomial') {
       if (!regularization) {
-        z$model <- MoE.optimize(data.train.input, bagging.ds, y, 'multinomial')
+        z$model <- MoE.optimize(simils.ds, bagging.ds, y, 'multinomial', predByM = predByM)
       }
       else stop('Not yet implemented')
       }
@@ -187,17 +207,31 @@ predict.snn.bagging = function(object, newdata, type = c("response", "prob")) {
   nmodels <- length(object$snn.sets)
   snn.sets.pred <- lapply(1:nmodels, function(i) {
     cat(c("Response", i))
-    tmp <- predict(object$snn.sets[[i]], newdata, type = "prob")
+    tmp <- predict(object$snn.sets[[i]], newdata, type = c("response", "prob","simils"))
     return(tmp)})
-  gsnn.sets.pred <<- snn.sets.pred
 
   print('Join results (responses)')
   #Transform to dataset
   bagging.ds <- data.frame(row.names = row.names(newdata))
-  for (snn.i.pred in snn.sets.pred)
-    bagging.ds <- cbind(bagging.ds, snn.i.pred)
+  for (snn.i.pred in snn.sets.pred) {
+    if (object$problemType == "numeric") {
+      bagging.ds <- cbind(bagging.ds, snn.i.pred$response)
+    } else {
+      bagging.ds <- cbind(bagging.ds, snn.i.pred$prob)
+    }
+  }
   colnames(bagging.ds) <- 1:ncol(bagging.ds)
-  
+
+
+  if (object$fit2layer$method == 'C') {
+    simils.ds <- data.frame(row.names = row.names(newdata))
+    for (i in 1:length(snn.sets.pred)) {
+      simils.ds <- cbind(simils.ds, snn.sets.pred[[i]]$simils)
+    }
+    colnames(simils.ds) <- 1:ncol(simils.ds)
+  }
+
+
   print('SNN Bagging methods')
 
   # Max vote and mean
@@ -214,7 +248,7 @@ predict.snn.bagging = function(object, newdata, type = c("response", "prob")) {
       # Transform list to 3D array
       snns.preds <- matrix(0, nrow(newdata), length(snn.sets.pred))
       for (i in (1:length(snn.sets.pred))) {
-        snns.preds[, i] <- apply(snn.sets.pred[[i]], 1, function(p) object$responseLevels[which.max(p)[1]])
+        snns.preds[, i] <- apply(snn.sets.pred[[i]]$prob, 1, function(p) object$responseLevels[which.max(p)[1]])
       }
       response <- apply(snns.preds, 1, function(x) names(sort(table(x), decreasing = TRUE)[1]))
       response <- factor(response, levels = object$responseLevels)
@@ -236,7 +270,8 @@ predict.snn.bagging = function(object, newdata, type = c("response", "prob")) {
     }
     else if (object$problemType == "multinomial") {
       # Transform list to 3D array
-      preds3D <- array(unlist(snn.sets.pred), dim = c(NROW(snn.sets.pred[[1]]), NCOL(snn.sets.pred[[1]]), length(snn.sets.pred)))
+      probs <- lapply(snn.sets.pred, function(r) r$prob)
+      preds3D <- array(unlist(probs), dim = c(NROW(probs[[1]]), NCOL(probs[[1]]), length(probs)))
       test.prob <- apply(preds3D, 2, rowMeans)
 
       if (length(object$responseLevels) == 2) {
@@ -275,10 +310,10 @@ predict.snn.bagging = function(object, newdata, type = c("response", "prob")) {
   else if (object$fit2layer$method == 'C') {
     if (object$problemType == 'numeric') {
         print('Weel')
-        response <- MoE.predict(object$fit2layer$model, x, bagging.ds)
+      response <- MoE.predict(object$fit2layer$model, simils.ds, bagging.ds)
     }
     else if (object$problemType == 'binomial') {
-      test.prob <- MoE.predict(object$fit2layer$model, x, bagging.ds)
+      test.prob <- MoE.predict(object$fit2layer$model, simils.ds, bagging.ds)
       response <- test.prob >= 0.5
       if (!is.null(object$responseLevels)) {
         response <- factor(response, levels = c(FALSE, TRUE))
@@ -286,7 +321,7 @@ predict.snn.bagging = function(object, newdata, type = c("response", "prob")) {
       }
     }
     else if (object$problemType == 'multinomial') {
-      test.prob <- MoE.predict(object$fit2layer$model, x, bagging.ds)
+      test.prob <- MoE.predict(object$fit2layer$model, simils.ds, bagging.ds)
       response <- apply(test.prob, 1, function(p) object$responseLevels[which.max(p)[1]])
     }
     else stop('Not implemented')
