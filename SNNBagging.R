@@ -104,14 +104,33 @@ snn.bagging.fit.second.layer <- function(data.train.input, y, snn.sets, daisyObj
   if (bagging.method == 'B' || bagging.method == 'C') {
 
     myTic()
-    snn.sets.pred <- lapply(1:length(snn.sets), function(i) predict(snn.sets[[i]], data.train.input, type = c("prob", "simils"), daisyObj = daisyObject))
+    snn.sets.pred <- lapply(1:length(snn.sets), function(i) predict(snn.sets[[i]], data.train.input, type = c("response", "prob", "simils"), daisyObj = daisyObject))
 
     bagging.ds <- data.frame(row.names = row.names(data.train.input))
-    for (snn.i.pred in snn.sets.pred) {
+    for (i in 1:length(snn.sets)) {
+      snn.i.pred <- snn.sets.pred[[i]]
       if (z$problemType == "numeric") {
         bagging.ds <- cbind(bagging.ds, snn.i.pred$response)
       } else {
-        bagging.ds <- cbind(bagging.ds, snn.i.pred$prob)
+        probs <- snn.i.pred$prob
+        if (nlevels(y) > 2) {
+          if (!is.matrix(probs)) {
+            probs.corrected <- cbind(1 - probs, probs)
+            colnames(probs.corrected) <- snn.sets[[i]]$outputLevels
+            probs <- as.data.frame(probs.corrected)
+            print('Prob corrected')
+          }
+          if (ncol(probs) < nlevels(y)) {
+            for (l in levels(y)) {
+              if (all(colnames(probs) != l)) {
+                probs[l] <- 0
+              }
+            }
+            probs <- probs[, levels(y)] # Resort by level id
+            print('Added missing levels')
+          }
+        }
+        bagging.ds <- cbind(bagging.ds, probs)
       }
     }
     colnames(bagging.ds) <- 1:ncol(bagging.ds)
@@ -213,11 +232,26 @@ predict.snn.bagging = function(object, newdata, type = c("response", "prob")) {
   print('Join results (responses)')
   #Transform to dataset
   bagging.ds <- data.frame(row.names = row.names(newdata))
-  for (snn.i.pred in snn.sets.pred) {
+  for (i in 1:length(snn.sets.pred)) {
+    snn.i.pred <- snn.sets.pred[[i]]
     if (object$problemType == "numeric") {
       bagging.ds <- cbind(bagging.ds, snn.i.pred$response)
     } else {
-      bagging.ds <- cbind(bagging.ds, snn.i.pred$prob)
+      probs <- snn.i.pred$prob
+      if (!is.null(object$responseLevels) && length(object$responseLevels) > 2) {
+        if (!is.matrix(probs)) {
+          probs.corrected <- cbind(1 - probs, probs)
+          colnames(probs.corrected) <- object$snn.sets[[i]]$outputLevels
+          probs <- as.data.frame(probs.corrected)
+        }
+        if (ncol(probs) < length(object$responseLevels)) {
+          for (l in object$responseLevels) {
+            if (all(colnames(probs) != l)) probs[l] <- 0
+            }
+          probs <- probs[, object$responseLevels] # Resort by level id
+        }
+      }
+      bagging.ds <- cbind(bagging.ds, probs)
     }
   }
   colnames(bagging.ds) <- 1:ncol(bagging.ds)
