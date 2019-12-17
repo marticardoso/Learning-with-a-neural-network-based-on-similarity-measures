@@ -308,7 +308,7 @@ snn.numberOfClusters <- function(N, hp = 0.1, nclust.method = 'C', trace = TRUE)
 
   if (nclust.method == "U" || nclust.method == "Uniform") {
     if (trace) cat("[Num of clusters method]: Uniform")
-    M <- round(runif(1, 1, N * hp))
+    M <- round(runif(1, 1, ceiling(N * hp)))
   }
   else if (nclust.method == "B" || nclust.method == "Binomial") {
     if (trace) cat("[Num of clusters method]: Binomial")
