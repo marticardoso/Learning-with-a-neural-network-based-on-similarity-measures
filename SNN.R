@@ -230,8 +230,12 @@ snn.createClassificationModel <- function(dataframe, regularization = FALSE, lam
 
 snn.createRegressionModel <- function(dataframe, regularization = FALSE, lambdas = NULL, ..., trace = TRUE) {
   if (!regularization) {
+
     if (trace) cat("[Regression] Creating lm model...\n")
     model <- lm(Target ~ ., data = dataframe)
+    if (is.na(sum(model$coefficients))) {
+      model$coefficients[is.na(model$coefficients)] <- 0
+    }
   }
   else {
     if (trace) cat("[Regression] Creating ridge regression model...\n")
