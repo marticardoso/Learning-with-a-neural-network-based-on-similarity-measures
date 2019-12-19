@@ -41,6 +41,7 @@ snn <- function(formula, data, subset = NULL, x = FALSE, y = FALSE, ..., trace =
       pred <- predict(z, newdata = data[-subset,], type = c("response", "prob"))
       z$testResponse <- pred$response
       z$testProb <- pred$prob
+      z$testReal <- test.y
       tab <- table(Truth = test.y, Pred = pred$response)
       z$testError <- 1 - sum(diag(tab)) / sum(tab)
       z$testAccuracy <- 100 * (1 - z$testError)
@@ -189,6 +190,9 @@ snn.createClassificationModel <- function(dataframe, regularization = FALSE, lam
     family.type <- "binomial"
   else if (is.factor(y) && nlevels(y) > 2)
     family.type <- "multinomial"
+  else if (is.factor(y) && nlevels(y) == 1) {
+    return(NULL) # Empty model, return always the only level
+  }
   else stop(gettextf("Classification output '%s' is not supported.", class(y)))
 
   if (!regularization && family.type == "binomial") {
@@ -378,7 +382,6 @@ predict.snn = function(object, newdata, type = c("response", "prob", "simils"), 
   if (ncol(object$prototypes)+1 == ncol(newdata)) {
     mf <- model.frame(object$formula, newdata, na.action = NULL)
     x <- mf[, -1]
-    y <- model.response(mf)
   }
   else if (ncol(object$prototypes) == ncol(newdata)) {
     x <- newdata
@@ -410,6 +413,12 @@ predict.snn = function(object, newdata, type = c("response", "prob", "simils"), 
   if (object$outputType == "logical") {
     test.prob <- predict(object$model, test.x, type = "response")
     response <- test.prob >= 0.5
+  }
+  else if (object$outputType == "factor" && length(object$outputLevels) == 1) {
+    response <- rep(object$outputLevels, nrow(test.x))
+    test.prob <- rep(1, nrow(test.x))
+    names(response) <- row.names(test.x)
+    names(test.prob) <- row.names(test.x)
   }
   else if (object$outputType == "factor") {
     if (any(class(object$model) == "multinom"))
