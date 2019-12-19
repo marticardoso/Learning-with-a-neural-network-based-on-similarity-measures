@@ -38,3 +38,18 @@ Load <- function() {
   kds <- rbind(ds[ds$Risk == 'High_risk',], ds[ds$Risk == 'No_risk',])
   ds$User_ID <- NULL
 }
+
+
+LoadHepatitisDs <- function() {
+  ds <- read.table('./datasets/classification/Hepatitis/hepatitis.data', sep = ',', na.string = '?')
+
+  colnames(ds) <- c('Class', 'age', 'sex', 'steroid', 'antivirals', 'fatigue', 'malaise', 'anorexia', 'liverbig', 'liverfirm',
+           'Spleenpalpable', 'spiders', 'ascites', 'varices', 'bilirubin', 'alk', 'sgot', 'albumin', 'protime', 'histology')
+  for (i in c(4:14, 20))
+    ds[, i] <- as.logical(ds[, i] - 1)
+  ds[, 3] <- as.factor(ds[, 3])
+  levels(ds[, 3]) <- c('male', 'female')
+  ds[, 1] <- as.factor(ds[, 1])
+  levels(ds[, 1]) <- c('die', 'live')
+  ds
+}
