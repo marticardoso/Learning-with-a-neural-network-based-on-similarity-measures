@@ -9,17 +9,9 @@ source("daisy/daisy2Predict.R")
 source("daisy/daisy2_noComputation.R")
 debug = TRUE
 
-snn <- function(formula, data, subset = NULL, x = TRUE, y = TRUE, ..., trace = TRUE) {
+snn <- function(formula, data, subset = NULL, x = FALSE, y = FALSE, ..., trace = TRUE) {
   ret.x <- x
   ret.y <- y
-  #mf <- match.call(expand.dots = FALSE)
-  #m <- match(c("formula", "data", "subset", "na.action"), names(mf), 0L)
-  #mf <- mf[c(1L, m)]
-  #mf$drop.unused.levels <- TRUE
-  #mf$na.omit <- NULL
-  # need stats:: for non-standard evaluation
-  #mf[[1L]] <- quote(stats::model.frame)
-  #mf <- eval(mf, parent.frame())
   mf <- model.frame(formula = formula, data = data, na.action = NULL, drop.unused.levels = TRUE)
   if (!is.null(subset)) mf <- mf[subset,]
 
@@ -31,7 +23,6 @@ snn <- function(formula, data, subset = NULL, x = TRUE, y = TRUE, ..., trace = T
 
   z <- snn.fit(x, y, ..., trace = trace)
 
-  #chkDots(...)
 
   class(z) <- c("snn")
   z$call <- match.call()
@@ -109,7 +100,6 @@ snn.fit <- function(x, y, daisyObj = NULL,
       if (trace) cat('[Computing daisy dissimilarity (using global sx and only prototypes)]')
       x.daisy <- daisy2.newObservations(prototypes, daisyObj, newdata = x)
       x.daisy <- as.matrix(x.daisy)
-      #x.daisy <- x.daisy[(nrow(prototypes) + 1):nrow(x.daisy),  1:nrow(prototypes)]
     }
     x.simils <- 1 - as.matrix(x.daisy)
   }
@@ -188,7 +178,6 @@ snn.fit <- function(x, y, daisyObj = NULL,
     z$dissim <- x.daisy
     z$dissim.matrix <- as.matrix(x.daisy)
     z$simil.matrix <- x.simils
-    #z$simil.matrix.prot <- x.simils[, id.medoid]
     z$findclusters.res <- findclusters.res
   }
   z
@@ -395,21 +384,14 @@ predict.snn = function(object, newdata, type = c("response", "prob", "simils"), 
     x <- newdata
   }
   else stop('Invalid new data')
-  #compute.daisy <- function(newX, prototypes) {
-  #  diss <- daisy2.newObservations(rbind(newX, prototypes), object$daisyObj)
-  #  return(as.matrix(diss)[1,-1])
-  #}
-  print('Computing daisy')
+  #print('Computing daisy')
   if (is.null(daisyObj) || !is.dissimilarity(daisyObj)) {
-    #x.daisy <- t(sapply(1:nrow(x), function(row) compute.daisy(x[row,], object$prototypes)))
     x.daisy <- daisy2.newObservations(object$prototypes, object$daisyObj, newdata = x)
     x.daisy <- as.matrix(x.daisy)
-    #x.daisy <- x.daisy[1:nrow(x), (nrow(x) + 1):nrow(x.daisy)]
   }
   else {
     x.daisy <- as.matrix(daisyObj)[rownames(x), rownames(object$prototypes)]
   }
-  print('DONE!')
   
   x.simils <- 1 - x.daisy
 
@@ -441,7 +423,7 @@ predict.snn = function(object, newdata, type = c("response", "prob", "simils"), 
     }
     else {
       response <- apply(prob, 1, function(p) object$outputLevels[which.max(p)[1]])
-      test.prob <- prob #apply(prob,1,function(p) max(p))
+      test.prob <- prob
     }
 
   }

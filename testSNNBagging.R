@@ -56,6 +56,13 @@ for (i in 1:nRuns) {
 }
 mean(mult.ensC)
 
+mult.ensD <- numeric(nRuns)
+for (i in 1:nRuns) {
+  r1 <- snn.bagging(Type ~ ., subset = s, wine, bagging.method = 'D')
+  mult.ensD[i] <- r1$testAccuracy
+}
+mean(mult.ensD)
+
 #Test with one SNN
 mult.snn <- numeric(nRuns)
 for (i in 1:nRuns) {
@@ -109,6 +116,13 @@ for (i in 1:nRuns) {
 }
 mean(bin.ensC)
 
+bin.ensD <- numeric(nRuns)
+for (i in 1:nRuns) {
+  r1 <- snn.bagging(Type1 ~ ., subset = s, wine2, bagging.method = 'D')
+  bin.ensD[i] <- r1$testAccuracy
+}
+mean(bin.ensD)
+
 bin.snn <- numeric(nRuns)
 for (i in 1:nRuns) {
   r1 <- snn(Type1 ~ ., subset = s, wine2)
@@ -153,6 +167,12 @@ for (i in 1:nRuns) {
 }
 mean(reg.ensC)
 
+reg.ensD <- numeric(nRuns)
+for (i in 1:nRuns) {
+  reg.lm <- snn.bagging(medv ~ ., BostonHousing, subset = s, regularization = FALSE, nclust.method = "U", bagging.method = 'D')
+  reg.ensD[i] <- reg.lm$nrmse
+}
+mean(reg.ensD)
 
 reg.snn <- numeric(nRuns)
 for (i in 1:nRuns) {
@@ -169,27 +189,3 @@ reg.lm$mse
 reg.lm$nrmse
 
 
-sampleTwoThirds <- function(ds) {
-  sample(nrow(ds), floor(2 / 2.5 * nrow(ds)))
-}
-
-ds2 <- read.csv('./datasets/regression/CASP.csv')
-s.d2 <- sampleTwoThirds(ds2)
-
-reg.lm <- snn.bagging(RMSD ~ ., ds2, subset = s.d2, nclust.method = "U", bagging.method = 'A', nSNN = 200)
-reg.lm$nrmse
-
-summary(lm(RMSD ~ ., ds2))
-
-
-ds3 <- read.csv('./datasets/regression/SkillCraft1_Dataset.csv')
-s.d3 <- sampleTwoThirds(ds3)
-#Timeout error
-snn.ds3 <- snn.bagging(LeagueIndex ~ ., ds3, nclust.method = "U", bagging.method = 'A', subset = s.d3, nSNN = 200)
-snn.ds3$nrmse
-
-
-
-daisyObject <- daisy2_noComputation(ds2, metric = "gower")
-
-data.train.inputs
