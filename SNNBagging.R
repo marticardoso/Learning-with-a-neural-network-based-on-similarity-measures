@@ -10,6 +10,7 @@ snn.bagging <- function(formula, data, subset = NULL, nSNN = 10,
   useGlobalDaisyTransformations = TRUE,
   snnbag.expectedRows = 0.5,
   snnbag.rowMethod = 'U',
+  bagging.method = 'B',
   ..., trace = TRUE) {
   if (!is.null(subset) && length(subset) < nrow(data)) data.train <- data[subset,]
   else data.train <- data
@@ -46,18 +47,26 @@ snn.bagging <- function(formula, data, subset = NULL, nSNN = 10,
   } else stop('Wrong paramater')
   howManyRows <- sapply(howManyRows, function(r) round(min(4000, nrow(data.train), max(50, r))))
 
-  snn.sets <- lapply(1:nSNN, function(i) {
-    nrows <- howManyRows[i]
-    if(trace) cat('Model ', i, 'of', nSNN, '(', nrows, ' observations) \n')
+  if (bagging.method == "E") {
+    rows <- sample(1:nrow(data.train))[1:min(4000, nrow(data.train))]
+    daisyObject <- daisy2_noComputation(data.train.inputs, metric = "gower", type = simil.types)
+    clust.data <- daisy2.newObservations(data.train.inputs[rows,], daisyObject)
+    clustering <- pam(clust.data, k = nSNN, metric = "euclidean", stand = FALSE, diss = TRUE, keep.diss = FALSE, keep.data = FALSE)$clustering
+  }
+  snn.sets <- lapply(1:nSNN, function(snnId) {
+    if (bagging.method == "E") {
+      bag.Ids <- names(which(clustering == snnId))
+    } else {
+      nrows <- howManyRows[snnId]
+      bag.Ids <- sample(1:nrow(data.train))[1:nrows]
+    }
+    if (trace) cat('Model ', snnId, 'of', nSNN, '(', length(bag.Ids), ' observations) \n')
 
-    bag.Ids <- sample(1:nrow(data.train))[1:nrows]
     snn(formula, data.train[bag.Ids,], daisyObj = daisyObject, regularization = snn.reg, simil.types = simil.types, ...,
         trace = FALSE, clust.control = list(clust.method = "R", nclust.method = "U"))
   })
 
-  
-
-  fit2layer <- snn.bagging.fit.second.layer(data.train.inputs, y, snn.sets, daisyObject = daisyObject, regularization = regularization, ..., trace = trace)
+  fit2layer <- snn.bagging.fit.second.layer(data.train.inputs, y, snn.sets, daisyObject = daisyObject, regularization = regularization, bagging.method = bagging.method, ..., trace = trace)
 
   z <- list()
   class(z) <- c("snn.bagging")
@@ -78,13 +87,9 @@ snn.bagging <- function(formula, data, subset = NULL, nSNN = 10,
 
     if (is.logical(y) || is.factor(y)) {
       pred <- predict(z, newdata = data[-subset,], type = c("response", "prob"))
-      if (is.list(pred)) {
-        z$testResponse <- pred$response
-        z$testProb <- pred$prob
-      }
-      else {
-        z$testResponse <- pred
-      }
+      z$testResponse <- pred$response
+      z$testProb <- pred$prob
+      z$testReal <- test.y
       tab <- table(Truth = test.y, Pred = z$testResponse)
       z$testError <- 1 - sum(diag(tab)) / sum(tab)
       z$testAccuracy <- 100 * (1 - z$testError)
@@ -102,7 +107,7 @@ snn.bagging <- function(formula, data, subset = NULL, nSNN = 10,
   z
 }
 
-snn.bagging.fit.second.layer <- function(data.train.input, y, snn.sets, daisyObject, bagging.method = 'B', regularization=FALSE, ..., trace = TRUE) {
+snn.bagging.fit.second.layer <- function(data.train.input, y, snn.sets, daisyObject, bagging.method = "B", regularization=FALSE, ..., trace = TRUE) {
 
   z <- list()
   z$method <- bagging.method
@@ -113,7 +118,7 @@ snn.bagging.fit.second.layer <- function(data.train.input, y, snn.sets, daisyObj
 
   if (trace) cat('Computing output for all models (Bagging) \n')
   
-  if (bagging.method == 'B' || bagging.method == 'C' || bagging.method == 'D') {
+  if (bagging.method == "B" || bagging.method == "C" || bagging.method == "D" || bagging.method == "E") {
 
     myTic()
     snn.sets.pred <- lapply(1:length(snn.sets), function(i) predict(snn.sets[[i]], data.train.input, type = c("response", "prob", "simils"), daisyObj = daisyObject))
@@ -127,7 +132,10 @@ snn.bagging.fit.second.layer <- function(data.train.input, y, snn.sets, daisyObj
         probs <- snn.i.pred$prob
         if (nlevels(y) > 2) {
           if (!is.matrix(probs)) {
-            probs.corrected <- cbind(1 - probs, probs)
+            probs.corrected <- cbind(probs)
+            if (length(snn.sets[[i]]$outputLevels) == 2) {
+              probs.corrected <- cbind(1 - probs.corrected, probs.corrected)
+            }
             colnames(probs.corrected) <- snn.sets[[i]]$outputLevels
             probs <- as.data.frame(probs.corrected)
           }
@@ -145,7 +153,7 @@ snn.bagging.fit.second.layer <- function(data.train.input, y, snn.sets, daisyObj
     }
     colnames(bagging.ds) <- 1:ncol(bagging.ds)
 
-    if (bagging.method == 'C') {
+    if (bagging.method == "C" || bagging.method == "E") {
       simils.ds <- data.frame(row.names = row.names(data.train.input))
       for (i in 1:length(snn.sets.pred)) {
         simils.ds <- cbind(simils.ds, snn.sets.pred[[i]]$simils)
@@ -160,7 +168,7 @@ snn.bagging.fit.second.layer <- function(data.train.input, y, snn.sets, daisyObj
         counter <- counter + nC
       }
     }
-    if (bagging.method == 'D') {
+    if (bagging.method == "D") {
       methodD.ds <- data.frame(row.names = row.names(data.train.input))
       for (i in 1:length(snn.sets.pred)) {
         nProt <- ncol(snn.sets.pred[[i]]$simils)
@@ -190,10 +198,10 @@ snn.bagging.fit.second.layer <- function(data.train.input, y, snn.sets, daisyObj
 
  
   cat(c('Problem type: ', z$problemType, ' - Method', bagging.method,'\n'))
-  if (bagging.method == 'A' || bagging.method == 'A2') {
+  if (bagging.method == "A" || bagging.method == 'A2') {
     # Nothing to do
   }
-  else if (bagging.method == 'B') {
+  else if (bagging.method == "B") {
     bagging.ds$Target <- y
     if (!regularization && z$problemType == 'binomial') {
       if (trace) cat("[2nd layer] Fitting glm...\n")
@@ -227,7 +235,7 @@ snn.bagging.fit.second.layer <- function(data.train.input, y, snn.sets, daisyObj
 
     }
   }
-  else if (bagging.method == 'C') {
+  else if (bagging.method == "C" || bagging.method == "E") {
     if (z$problemType == 'numeric') {
       z$model <- MoE.optimize(simils.ds, bagging.ds, y, 'numeric', predByM = predByM)
     }
@@ -239,7 +247,7 @@ snn.bagging.fit.second.layer <- function(data.train.input, y, snn.sets, daisyObj
     }
     else stop('Not yet implemented')
   }
-  else if (bagging.method == 'D') {
+  else if (bagging.method == "D") {
     if (z$problemType == 'binomial') {
       if (trace) cat("[2nd layer] Fitting glm...\n")
       z$model <- glm(Target ~ ., data = methodD.ds, family = "binomial", ...)
@@ -281,7 +289,10 @@ predict.snn.bagging = function(object, newdata, type = c("response", "prob")) {
       probs <- snn.i.pred$prob
       if (!is.null(object$responseLevels) && length(object$responseLevels) > 2) {
         if (!is.matrix(probs)) {
-          probs.corrected <- cbind(1 - probs, probs)
+          probs.corrected <- cbind(probs)
+          if (length(object$snn.sets[[i]]$outputLevels) == 2) {
+            probs.corrected <- cbind(1 - probs.corrected, probs.corrected)
+          }
           colnames(probs.corrected) <- object$snn.sets[[i]]$outputLevels
           probs <- as.data.frame(probs.corrected)
         }
@@ -298,14 +309,14 @@ predict.snn.bagging = function(object, newdata, type = c("response", "prob")) {
   colnames(bagging.ds) <- 1:ncol(bagging.ds)
 
 
-  if (object$fit2layer$method == 'C') {
+  if (object$fit2layer$method == "C" || object$fit2layer$method == "E") {
     simils.ds <- data.frame(row.names = row.names(newdata))
     for (i in 1:length(snn.sets.pred)) {
       simils.ds <- cbind(simils.ds, snn.sets.pred[[i]]$simils)
     }
     colnames(simils.ds) <- 1:ncol(simils.ds)
   }
-  if (object$fit2layer$method == 'D') {
+  if (object$fit2layer$method == "D") {
 
     methodD.ds <- data.frame(row.names = row.names(newdata))
     for (i in 1:length(snn.sets.pred)) {
@@ -333,7 +344,7 @@ predict.snn.bagging = function(object, newdata, type = c("response", "prob")) {
   print('SNN Bagging methods')
 
   # Max vote and mean
-  if (object$fit2layer$method == 'A') {
+  if (object$fit2layer$method == "A") {
     if (object$problemType == "binomial") {
       response <- rowMeans(bagging.ds >= 0.5) > 0.5
       if (!is.null(object$responseLevels)) {
@@ -384,7 +395,7 @@ predict.snn.bagging = function(object, newdata, type = c("response", "prob")) {
     }
 
   }
-  else if (object$fit2layer$method == 'B') {
+  else if (object$fit2layer$method == "B") {
     if (any(class(object$fit2layer$model) == "glmnet")) {  # Glmnet does not support data frame
       bagging.ds <- as.matrix(bagging.ds)
     }
@@ -405,7 +416,7 @@ predict.snn.bagging = function(object, newdata, type = c("response", "prob")) {
       #response <- predict(object$fit2layer$model, bagging.ds)
     }
   }
-  else if (object$fit2layer$method == 'C') {
+  else if (object$fit2layer$method == "C" || object$fit2layer$method == "E") {
     if (object$problemType == 'numeric') {
       response <- MoE.predict(object$fit2layer$model, simils.ds, bagging.ds)
     }
@@ -423,7 +434,7 @@ predict.snn.bagging = function(object, newdata, type = c("response", "prob")) {
     }
     else stop('Not implemented')
     }
-  else if (object$fit2layer$method == 'D') {
+  else if (object$fit2layer$method == "D") {
     if (object$problemType == "binomial") {
       test.prob <- predict(object$fit2layer$model, methodD.ds, type = "response")
       response <- test.prob >= 0.5

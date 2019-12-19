@@ -63,6 +63,14 @@ for (i in 1:nRuns) {
 }
 mean(mult.ensD)
 
+set.seed(1234)
+mult.ensE <- numeric(nRuns)
+for (i in 1:nRuns) {
+  r1 <- snn.bagging(Type ~ ., subset = s, wine, bagging.method = 'E')
+  mult.ensE[i] <- r1$testAccuracy
+}
+mean(mult.ensE)
+
 #Test with one SNN
 mult.snn <- numeric(nRuns)
 for (i in 1:nRuns) {
@@ -123,6 +131,13 @@ for (i in 1:nRuns) {
 }
 mean(bin.ensD)
 
+bin.ensE <- numeric(nRuns)
+for (i in 1:nRuns) {
+  r1 <- snn.bagging(Type1 ~ ., subset = s, wine2, bagging.method = 'E')
+  bin.ensE[i] <- r1$testAccuracy
+}
+mean(bin.ensE)
+
 bin.snn <- numeric(nRuns)
 for (i in 1:nRuns) {
   r1 <- snn(Type1 ~ ., subset = s, wine2)
@@ -173,6 +188,13 @@ for (i in 1:nRuns) {
   reg.ensD[i] <- reg.lm$nrmse
 }
 mean(reg.ensD)
+
+reg.ensE <- numeric(nRuns)
+for (i in 1:nRuns) {
+  reg.lm <- snn.bagging(medv ~ ., BostonHousing, subset = s, regularization = FALSE, nclust.method = "U", bagging.method = 'E')
+  reg.ensE[i] <- reg.lm$nrmse
+}
+mean(reg.ensE)
 
 reg.snn <- numeric(nRuns)
 for (i in 1:nRuns) {
