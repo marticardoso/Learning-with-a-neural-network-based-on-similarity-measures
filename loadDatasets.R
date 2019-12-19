@@ -1,7 +1,4 @@
 library("readxl")
-ds6 <- data.frame(read_excel('./datasets/regression/Concrete_Data.xls'))
-colnames(ds6) <- c('Cement', 'BlastFurnace', 'FlyAsh', 'Water', 'Superplasticizer', 'Coarse', 'Fine', 'Age', 'CCS')
-
 LoadBankMarketingDS <- function() {
   ds <- read.csv('./datasets/classification/BankMarketing/bank-full.csv', sep = ';')
   ds
@@ -39,7 +36,6 @@ LoadHepatitisDs <- function() {
   levels(ds[, 1]) <- c('die', 'live')
   ds
 }
-#summary(LoadHepatitisDs())
 
 LoadAudiologyDs <- function() {
   ds <- read.table('./datasets/classification/Audiology/audiology.standardized.data', sep = ',', na.string = '?')
@@ -57,7 +53,6 @@ LoadAudiologyDs <- function() {
   ds$V70 <- NULL
   ds
 }
-#summary(LoadAudiologyDs())
 
 LoadContraceptiveDs <- function() {
   ds <- read.table('./datasets/classification/Contraceptive/cmc.data', sep = ',', na.string = '?')
@@ -71,22 +66,6 @@ LoadContraceptiveDs <- function() {
   ds$V10 <- as.factor(ds$V10)
   ds
 }
-#summary(LoadContraceptiveDs())
-
-ds <- (LoadContraceptiveDs())
-s <- sample(nrow(kds), 60)
-r1 <- snn(Risk ~ ., kds, subset = s, regularization = TRUE, standardizeSimils = TRUE, x = TRUE)
-r1$testContingencyTable
-r1$testAccuracy
-
-Load <- function() {
-  ds <- read.csv('./datasets/online-sex-work/online_sex_work.csv', sep = ',')
-  ds$Friends_ID_list <- NULL
-  kds <- rbind(ds[ds$Risk == 'High_risk',], ds[ds$Risk == 'No_risk',])
-  ds$User_ID <- NULL
-}
-
-
 
 
 
