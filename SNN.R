@@ -38,7 +38,7 @@ snn <- function(formula, data, subset = NULL, x = FALSE, y = FALSE, ..., trace =
     test.y <- model.response(mf.test)
 
     if (is.logical(y) || is.factor(y)) {
-      pred <- predict(z, newdata = data[-subset,], type = c("response", "prob"))
+      pred <- predict(z, newdata = data[-subset,], type = c("response", "prob"),trace =trace)
       z$testResponse <- pred$response
       z$testProb <- pred$prob
       z$testReal <- test.y
@@ -48,7 +48,7 @@ snn <- function(formula, data, subset = NULL, x = FALSE, y = FALSE, ..., trace =
       z$testContingencyTable <- tab
     }
     else if (is.numeric(y)) {
-      z$testResponse <- predict(z, newdata = data[-subset,], type = "response")
+      z$testResponse <- predict(z, newdata = data[-subset,], type = "response", trace = trace)
       z$testReal <- test.y
       z$mse <- mean((z$testResponse - test.y) ^ 2)
       z$nrmse <- sum((z$testResponse - test.y) ^ 2) / ((length(test.y) - 1) * var(test.y))
@@ -377,8 +377,8 @@ summary.snn <- function(object) {
   }
 }
 
-predict.snn = function(object, newdata, type = c("response", "prob", "simils"), daisyObj = NULL, ...) {
-  print('Predicting SNN')
+predict.snn = function(object, newdata, type = c("response", "prob", "simils"), daisyObj = NULL, ..., trace = TRUE) {
+  if(trace) print('Predicting SNN')
   if (ncol(object$prototypes)+1 == ncol(newdata)) {
     mf <- model.frame(object$formula, newdata, na.action = NULL)
     x <- mf[, -1]

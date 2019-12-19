@@ -26,7 +26,7 @@ myToc <- function(ini = NULL, label = NULL, print = TRUE) {
     cat('\n')
   }
   lastTime <<- currentTime
-  currentTime
+  elapsedSec
 }
 
 

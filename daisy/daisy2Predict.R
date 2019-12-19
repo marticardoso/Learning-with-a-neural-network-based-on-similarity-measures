@@ -97,7 +97,7 @@ daisy2.newObservations <- function(x, daisyObj, newdata = NULL)
     colnames(disv) <- rownames(oldX)
   }
   else {
-    print('Computing full daisy matrix')
+    #print('Computing full daisy matrix')
     disv <- .Fortran("cldaisy2", ## -> ../src/daisy.f
                    n,
                    p,

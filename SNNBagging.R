@@ -16,7 +16,6 @@ snn.bagging <- function(formula, data, subset = NULL, nSNN = 10,
   else data.train <- data
 
   if(trace) cat('Computing dissimilarities \n') # Compute similarities before in order to speed up
-  myTic()
   mf <- model.frame(formula, data.train, na.action = NULL)
   data.train.inputs <- mf[, -1]
   y <- model.response(mf)
@@ -32,7 +31,6 @@ snn.bagging <- function(formula, data, subset = NULL, nSNN = 10,
     if(trace) cat('Daisy will be computed in each SNN!\n')
     daisyObject <- NULL
   }
-  myToc(label = 'Daisy')
 
   if (trace) cat('Computing Models \n')
   
@@ -86,9 +84,14 @@ snn.bagging <- function(formula, data, subset = NULL, nSNN = 10,
     test.y <- model.response(model.frame(formula, data = data[-subset,], na.action=NULL))
 
     if (is.logical(y) || is.factor(y)) {
-      pred <- predict(z, newdata = data[-subset,], type = c("response", "prob"))
-      z$testResponse <- pred$response
-      z$testProb <- pred$prob
+      pred <- predict(z, newdata = data[-subset,], type = c("response", "prob"), trace = trace)
+      if (is.list(pred)) {
+        z$testResponse <- pred$response
+        z$testProb <- pred$prob
+      }
+      else {
+        z$testResponse <- pred
+      }
       z$testReal <- test.y
       tab <- table(Truth = test.y, Pred = z$testResponse)
       z$testError <- 1 - sum(diag(tab)) / sum(tab)
@@ -96,7 +99,7 @@ snn.bagging <- function(formula, data, subset = NULL, nSNN = 10,
       z$testContingencyTable <- tab
     }
     else if (is.numeric(y)) {
-      z$testResponse <- predict(z, newdata = data[-subset,], type = "response")
+      z$testResponse <- predict(z, newdata = data[-subset,], type = "response", trace = trace)
       z$testReal <- test.y
       z$mse <- sum((z$testResponse - test.y) ^ 2) / (length(test.y) - 1)
       z$nrmse <- sum((z$testResponse - test.y) ^ 2) / ((length(test.y) - 1) * var(test.y))
@@ -120,8 +123,7 @@ snn.bagging.fit.second.layer <- function(data.train.input, y, snn.sets, daisyObj
   
   if (bagging.method == "B" || bagging.method == "C" || bagging.method == "D" || bagging.method == "E") {
 
-    myTic()
-    snn.sets.pred <- lapply(1:length(snn.sets), function(i) predict(snn.sets[[i]], data.train.input, type = c("response", "prob", "simils"), daisyObj = daisyObject))
+    snn.sets.pred <- lapply(1:length(snn.sets), function(i) predict(snn.sets[[i]], data.train.input, type = c("response", "prob", "simils"), daisyObj = daisyObject, trace=trace))
 
     bagging.ds <- data.frame(row.names = row.names(data.train.input))
     for (i in 1:length(snn.sets)) {
@@ -193,11 +195,10 @@ snn.bagging.fit.second.layer <- function(data.train.input, y, snn.sets, daisyObj
       methodD.ds$Target <- y
      
     }
-    myToc()
   }
 
  
-  cat(c('Problem type: ', z$problemType, ' - Method', bagging.method,'\n'))
+  if(trace) cat(c('Problem type: ', z$problemType, ' - Method', bagging.method,'\n'))
   if (bagging.method == "A" || bagging.method == 'A2') {
     # Nothing to do
   }
@@ -268,17 +269,17 @@ snn.bagging.fit.second.layer <- function(data.train.input, y, snn.sets, daisyObj
 # # # # # # # #
 # Prediction! #
 # # # # # # # #
-predict.snn.bagging = function(object, newdata, type = c("response", "prob")) {
+predict.snn.bagging = function(object, newdata, type = c("response", "prob"), trace = TRUE) {
   mf <- model.frame(object$formula, newdata, na.action = NULL)
   x <- mf[, -1]
-  print('Computing test responses')
+  if (trace) print('Computing test responses')
   nmodels <- length(object$snn.sets)
   snn.sets.pred <- lapply(1:nmodels, function(i) {
-    cat(c("Response", i))
-    tmp <- predict(object$snn.sets[[i]], newdata, type = c("response", "prob","simils"))
+    if (trace) cat(c("Response", i))
+    tmp <- predict(object$snn.sets[[i]], newdata, type = c("response", "prob","simils"), trace=trace)
     return(tmp)})
 
-  print('Join results (responses)')
+  if (trace) print('Join results (responses)')
   #Transform to dataset
   bagging.ds <- data.frame(row.names = row.names(newdata))
   for (i in 1:length(snn.sets.pred)) {
@@ -341,7 +342,7 @@ predict.snn.bagging = function(object, newdata, type = c("response", "prob")) {
     }
   }
 
-  print('SNN Bagging methods')
+  if (trace) print('SNN Bagging methods')
 
   # Max vote and mean
   if (object$fit2layer$method == "A") {

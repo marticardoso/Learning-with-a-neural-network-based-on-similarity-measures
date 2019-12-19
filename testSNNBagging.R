@@ -22,7 +22,7 @@ s <- sample(nrow(wine), 100)
 set.seed(1234)
 mult.ensA <- numeric(nRuns)
 for (i in 1:nRuns) {
-  r1 <- snn.bagging(Type ~ ., subset = s, wine, bagging.method = 'A', runDaisyOnce = FALSE,  useGlobalDaisyTransformations = TRUE, nSNN = 20)
+  r1 <- snn.bagging(Type ~ ., subset = s, wine, bagging.method = 'A', nSNN = 20)
   mult.ensA[i] <- r1$testAccuracy
 }
 myToc(ini)
