@@ -455,6 +455,18 @@ LoadHorseColicV1 <- function() {
   r
 }
 
+LoadGlass <- function() {
+  ds <- read.table('./datasets/classification/Glass/glass.data', sep = ',', na.strings = '?')
+  colnames(ds) <- c('Id', 'RI', 'Na', 'Mg', 'Al', 'Si', 'K', 'Ca', 'Ba', 'Fe', 'Target')
+  ds$Id <- NULL
+  ds$Target <- as.factor(ds$Target)
+
+  # For Gower
+  simil.types <- list()
+
+  return(list(name = 'Glass', dataset = ds, simil.types = simil.types))
+}
+
 
 LoadAnnealing <- function() {
   ds <- read.table('./datasets/classification/Annealing/anneal.data', sep = ',', na.strings = '?')
@@ -502,6 +514,7 @@ LoadDiabetis <- function() {
   formula <- readmitted ~ .
   return(list(name = 'Diabetis', dataset = ds, formula = formula, simil.types = simil.types))
 }
+
 
 ############
 # Other #
