@@ -16,8 +16,8 @@ LoadAutomobileDS <- function(removeNATarget = TRUE) {
 
   # For Gower
   simil.types <- list(ordratio = c("numofcylinders", "numofdoors"))
-
-  return(list(dataset = ds, simil.types = simil.types))
+  formula <- price ~ .
+  return(list(name="Automobile", dataset = ds, formula = formula , simil.types = simil.types))
 }
 
 LoadAutoMPGDS <- function(removeNATarget = TRUE) {
@@ -30,8 +30,8 @@ LoadAutoMPGDS <- function(removeNATarget = TRUE) {
 
   # For Gower
   simil.types <- list()
-
-  return(list(dataset = ds, simil.types = simil.types))
+  formula <- mpg ~ .
+  return(list(name = "AutoMPG", dataset = ds, formula = formula, simil.types = simil.types))
 }
 
 LoadCommunitiesDataset <- function() {
@@ -57,8 +57,8 @@ LoadCommunitiesDataset <- function() {
   levels(ds$LemasGangUnitDeploy) <- c("No","PartTime", "Yes")
   
   simil.types <- list(ordratio = c("LemasGangUnitDeploy"))
-
-  return(list(dataset = ds, simil.types = simil.types))
+  formula <- Target ~ .
+  return(list(name = "Communities", dataset = ds, formula = formula, simil.types = simil.types))
 }
 
 
@@ -76,7 +76,7 @@ LoadMvDataset <- function() {
   # For Gower
   simil.types <- list(symm=c('X7','X8'))
 
-  return(list(dataset = ds, simil.types = simil.types))
+  return(list(name='MV', dataset = ds, simil.types = simil.types))
 }
 
 LoadWaveDataset <- function() {
@@ -85,7 +85,8 @@ LoadWaveDataset <- function() {
 
   simil.types <- list()
 
-  return(list(dataset = ds, simil.types = simil.types))
+  formula <- Target ~ .
+  return(list(name='Wave', dataset = ds, formula = formula, simil.types = simil.types))
 }
 
 
@@ -154,7 +155,8 @@ LoadHeartDataset <- function() {
   # For Gower
   simil.types <- list(ordratio = c("V11"), symm=c('V2','V6','V9'))
 
-  return(list(dataset=heart, simil.types = simil.types))
+  formula <- Target ~ .
+  return(list(name = 'Heart', dataset = ds, formula = formula, simil.types = simil.types))
 }
 
 
@@ -183,8 +185,8 @@ LoadMammographicDataset <- function() {
   
   # For Gower
   simil.types <- list(ordratio = c("density"))
-
-  return(list(dataset = ds, simil.types = simil.types))
+  formula <- severity ~ .
+  return(list(name = 'Mammographic', dataset = ds, formula = formula, simil.types = simil.types))
 }
 
 
@@ -194,7 +196,9 @@ LoadMushroomDataset <- function() {
   # Empty column
   ds$V17 <- NULL
 
-  return(list(dataset = ds))
+  simil.types <- list()
+  formula <- severity ~ .
+  return(list(name = 'Mushroom', dataset = ds, formula = formula, simil.types = simil.types))
 }
 
 LoadHorseColic <- function(targetId) {
@@ -295,7 +299,7 @@ LoadHorseColic <- function(targetId) {
   # For Gower
   simil.types <- list(ordratio = c("V5", "V6", "V20", "V22"))
 
-  return(list(dataset = ds, simil.types = simil.types))
+  return(list(name = "HorseColic", dataset = ds, simil.types = simil.types))
 }
 
 LoadHorseColicV2 <- function() {
@@ -317,6 +321,8 @@ LoadHorseColicV2 <- function() {
   ds <- ds[!is.na(ds[, "Target"]),]
 
   r$dataset <- ds
+  r$formula <- Target ~ .
+  r$name <- "HorseColic2"
   r
 }
 
@@ -327,8 +333,8 @@ LoadCensus <- function() {
   # For Gower
   simil.types <- list()
 
-
-  return(list(dataset = ds, simil.types = simil.types))
+  formula <- Target ~ .
+  return(list(name = 'Census', dataset = ds, formula = formula, simil.types = simil.types))
 }
 
 
@@ -350,7 +356,11 @@ LoadAudiologyDs <- function() {
   ds$V48 <- NULL
   ds$V51 <- NULL
   ds$V70 <- NULL
-  ds
+
+  # For Gower
+  simil.types <- list()
+  formula <- V71 ~ .
+  return(list(name = 'Audiology", dataset = ds, formula = formula, simil.types = simil.types))
 }
 
 LoadHorseColicV1 <- function() {
@@ -373,6 +383,8 @@ LoadHorseColicV1 <- function() {
   ds <- ds[!is.na(ds[, "Target"]),]
 
   r$dataset <- ds
+  r$formula <- Target ~ .
+  r$name <- "HorseColic1"
   r
 }
 
@@ -390,9 +402,8 @@ LoadAnnealing <- function() {
 
   # For Gower
   simil.types <- list()
-
-
-  return(list(dataset = ds, simil.types = simil.types))
+  formula <- Target ~ .
+  return(list(name='Annealing', dataset = ds, formula = formula, simil.types = simil.types))
 }
 
 LoadContraceptiveDs <- function() {
@@ -405,7 +416,9 @@ LoadContraceptiveDs <- function() {
   ds$V8 <- as.ordered(ds$V8)
   ds$V9 <- as.logical(ds$V9)
   ds$V10 <- as.factor(ds$V10)
-  ds
+  simil.types <- list()
+  formula <- V10 ~ .
+  return(list(name='Contraceptive', dataset = ds, formula = formula, simil.types = simil.types))
 }
 
 LoadDiabetis <- function() {
@@ -419,9 +432,8 @@ LoadDiabetis <- function() {
   ds$discharge_disposition_id <- as.factor(ds$discharge_disposition_id)
   # For Gower
   simil.types <- list()
-
-
-  return(list(dataset = ds, simil.types = simil.types))
+  formula <- readmitted ~ .
+  return(list(name='Diabetis', dataset = ds, formula = formula, simil.types = simil.types))
 }
 
 ############
@@ -429,5 +441,7 @@ LoadDiabetis <- function() {
 LoadAdultDataset <- function() {
   ds <- read.table("datasets/classification/+/Adult/adult.data", sep = ",", strip.white = TRUE, na.strings = "?")
   colnames(ds)[15] <- "Target"
-  return(list(dataset = ds))
+  simil.types <- list()
+  formula <- Target ~ .
+  return(list(name='Adult', dataset = ds, formula = formula, simil.types = simil.types))
 }
