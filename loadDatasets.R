@@ -156,7 +156,7 @@ LoadHeartDataset <- function() {
   simil.types <- list(ordratio = c("V11"), symm=c('V2','V6','V9'))
 
   formula <- Target ~ .
-  return(list(name = 'Heart', dataset = ds, formula = formula, simil.types = simil.types))
+  return(list(name = 'Heart', dataset = heart, formula = formula, simil.types = simil.types))
 }
 
 
@@ -360,7 +360,7 @@ LoadAudiologyDs <- function() {
   # For Gower
   simil.types <- list()
   formula <- V71 ~ .
-  return(list(name = 'Audiology", dataset = ds, formula = formula, simil.types = simil.types))
+  return(list(name = 'Audiology', dataset = ds, formula = formula, simil.types = simil.types))
 }
 
 LoadHorseColicV1 <- function() {

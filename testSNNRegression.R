@@ -15,29 +15,32 @@ library(tree)
 #First we load some useful function for the model selection task
 source('SNN.R')
 source('testUtils.R')
+source('loadDatasets.R')
 
-#Regression
-
-data(Ozone)
-summary(Ozone)
-
-data(Servo)
-summary(Servo)
 
 #####################
 ## Automobile ##
 #####################
-autoInfo <- LoadAutomobileDS()
-ds1 <- autoInfo$dataset
-s <- sampleTwoThirds(ds1)
-snn.ds1 <- snn(price ~ ., ds1, subset = s, regularization = FALSE)
+set.seed(2)
+automobile <- LoadAutomobileDS()
+s <- sampleTwoThirds(automobile$dataset)
+snn.ds1 <- snn(automobile$formula, automobile$dataset, subset = s, simil.types = automobile$simil.types)
 snn.ds1$nrmse
 
 #Compare to decision tree
-model.tree <- tree(price ~ ., data = ds1[s,])
-nrmse(predict(model.tree, ds1[-s,]), ds1[-s,]$price)
+model.tree <- tree(price ~ ., data = automobile$dataset[s,])
+nrmse(predict(model.tree, automobile$dataset[-s,]), automobile$dataset[-s,]$price)
 
 runRegressionEnsembleTests(price ~ ., ds1)
+
+
+r <- runRegressionSNNOptTests(price ~ ., ds1, nRuns = 50)
+
+df <- data.frame(nrmse = colMeans(r$nrmseOrAcc), nrmse.sd = colSd(r$nrmseOrAcc), method = colnames(r$nrmseOrAcc))
+ggplot(data = df, aes(x = method, y = nrmse, group = 1)) +
+  geom_errorbar(aes(ymin = nrmse - nrmse.sd, ymax = nrmse + nrmse.sd), width = .1) +
+  geom_line() +
+  geom_point()
 
 #############
 ## AutoMPG ##

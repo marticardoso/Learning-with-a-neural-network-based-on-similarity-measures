@@ -551,7 +551,7 @@ optimize_p_oneOpt <- function(simils, t, pInitial = 0.1, ..., trace = TRUE) {
   initialValues <- c(initialW, pInitial)
   res <- optim(initialValues, func, grad, method = "BFGS")
   z <- list()
-  z$newP <- res$par[length(res$par)]
+  z$newP <- max(0.01, res$par[length(res$par)])
   if (is.matrix(initialW)) z$w <- matrix(res$par[1:length(res$par) - 1], ncol = ncol(initialW))
   else z$w <- res$par[1:length(res$par) - 1]
   z$E <- res$value
