@@ -1,4 +1,4 @@
-
+library(foreign)
 ##############
 # Regression #
 ##############
@@ -61,6 +61,23 @@ LoadCommunitiesDataset <- function() {
   return(list(dataset = ds, simil.types = simil.types))
 }
 
+
+LoadMvDataset <- function() {
+  ds <- read.arff('./datasets/regression/Mv/mv.arff')
+  colnames(ds) <- c(paste('X', 1:10, sep = ''), 'Target')
+  levels(ds$X3) <- trimws(levels(ds$X3))
+  levels(ds$X7) <- trimws(levels(ds$X7))
+  levels(ds$X8) <- trimws(levels(ds$X8))
+
+  ds$X3 <- as.factor(ds$X3)
+  ds$X7 <- as.logical(ds$X7 == 'yes')
+  ds$X8 <- as.factor(ds$X8)
+
+  # For Gower
+  simil.types <- list(symm=c('X7','X8'))
+
+  return(list(dataset = ds, simil.types = simil.types))
+}
 
 LoadWaveDataset <- function() {
   ds <- read.csv('./datasets/regression/WaveEnergy/Adelaide_Data.csv', dec = '.', sep = ',', header = FALSE)

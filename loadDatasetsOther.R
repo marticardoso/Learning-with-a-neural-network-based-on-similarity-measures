@@ -53,3 +53,16 @@ LoadHepatitisDs <- function() {
   levels(ds[, 1]) <- c('die', 'live')
   ds
 }
+
+LoadGlass <- function() {
+  ds <- read.table('./datasets/classification/Glass/glass.data', sep = ',', na.strings = '?')
+  colnames(ds) <- c('Id', 'RI', 'Na', 'Mg', 'Al', 'Si', 'K', 'Ca', 'Ba', 'Fe', 'Target')
+  ds$Id <- NULL
+  ds$Target <- as.factor(ds$Target)
+  
+  # For Gower
+  simil.types <- list()
+
+
+  return(list(dataset = ds, simil.types = simil.types))
+}

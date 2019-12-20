@@ -75,6 +75,20 @@ r <- runRegressionEnsembleTests(Target ~ ., ds4)
 
 
 #####################
+## MV Data Set ##
+#####################
+# Nrows: 9568
+ds4 <- LoadMvDataset()$dataset
+s.d4 <- sampleTwoThirds(ds4)
+#Timeout error
+snn.ds4 <- snn.bagging(Target ~ ., ds4, subset = s.d4, regularization = FALSE)
+snn.ds4$nrmse
+
+#Compare to decision tree
+model.tree <- tree(Target ~ ., data = ds4[s.d4,])
+nrmse(predict(model.tree, ds4[-s.d4,]), ds4[-s.d4,]$Target)
+
+#####################
 ## Concrete Compressive Strength Data Set ##
 #####################
 library("readxl")
