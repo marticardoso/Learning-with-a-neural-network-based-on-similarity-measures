@@ -4,26 +4,26 @@ library(foreign)
 ##############
 
 LoadAutomobileDS <- function(removeNATarget = TRUE) {
-  ds <- read.table('./datasets/regression/Automobile/imports-85.data', sep = ',',na.strings = '?')
+  ds <- read.table('./datasets/regression/Automobile/imports-85.data', sep = ',', na.strings = '?')
   colnames(ds) <- c("symboling", "normalizedlosses", "make", "fueltype", "aspiration", "numofdoors", "bodystyle", "drivewheel", "enginelocation", "wheelbase",
   "length", "width", "height", "curbweight", "enginetype", "numofcylinders", "enginesize", "fuelsystem", "bore", "stroke", "compressionratio", "horsepower",
   "peakrpm", "citympg", "highwaymp", "price")
 
   ds$numofcylinders <- factor(ds$numofcylinders, ordered = TRUE, levels = c("two", "three", "four", "five", "six", "eight", "twelve"))
-  ds$numofdoors <- factor(ds$numofdoors, ordered = TRUE, levels = c("two","four"))
+  ds$numofdoors <- factor(ds$numofdoors, ordered = TRUE, levels = c("two", "four"))
 
   if (removeNATarget) ds <- ds[!is.na(ds$price),]
 
   # For Gower
   simil.types <- list(ordratio = c("numofcylinders", "numofdoors"))
   formula <- price ~ .
-  return(list(name="Automobile", dataset = ds, formula = formula , simil.types = simil.types))
+  return(list(name = "Automobile", dataset = ds, formula = formula, simil.types = simil.types))
 }
 
 LoadAutoMPGDS <- function(removeNATarget = TRUE) {
   ds <- read.table('./datasets/regression/AutoMPG/auto-mpg.data-original')
   colnames(ds) <- c("mpg", "cylinders", "displacement", "horsepower", "weight", "acceleration", "modelyear", "origin", "carname")
-  
+
   ds$carname <- NULL
 
   if (removeNATarget) ds <- ds[!is.na(ds$mpg),]
@@ -36,15 +36,15 @@ LoadAutoMPGDS <- function(removeNATarget = TRUE) {
 
 LoadCommunitiesDataset <- function() {
   ds <- read.table('./datasets/regression/Communities/communities.data', sep = ',', na.strings = '?')
-  colnames(ds) <- c("state","county","community","communityname","fold","population","householdsize","racepctblack","racePctWhite","racePctAsian","racePctHisp","agePct12t21","agePct12t29","agePct16t24","agePct65up","numbUrban",
-           "pctUrban","medIncome","pctWWage","pctWFarmSelf","pctWInvInc","pctWSocSec","pctWPubAsst","pctWRetire","medFamInc","perCapInc","whitePerCap","blackPerCap","indianPerCap","AsianPerCap","OtherPerCap","HispPerCap",
-           "NumUnderPov","PctPopUnderPov","PctLess9thGrade","PctNotHSGrad","PctBSorMore","PctUnemployed","PctEmploy","PctEmplManu","PctEmplProfServ","PctOccupManu","PctOccupMgmtProf","MalePctDivorce","MalePctNevMarr","FemalePctDiv",
-           "TotalPctDiv","PersPerFam","PctFam2Par","PctKids2Par","PctYoungKids2Par","PctTeen2Par","PctWorkMomYoungKids","PctWorkMom","NumIlleg","PctIlleg","NumImmig","PctImmigRecent","PctImmigRec5","PctImmigRec8","PctImmigRec10",
-           "PctRecentImmig","PctRecImmig5","PctRecImmig8","PctRecImmig10","PctSpeakEnglOnly","PctNotSpeakEnglWell","PctLargHouseFam","PctLargHouseOccup","PersPerOccupHous","PersPerOwnOccHous","PersPerRentOccHous","PctPersOwnOccup",
-           "PctPersDenseHous","PctHousLess3BR","MedNumBR","HousVacant","PctHousOccup","PctHousOwnOcc","PctVacantBoarded","PctVacMore6Mos","MedYrHousBuilt","PctHousNoPhone","PctWOFullPlumb","OwnOccLowQuart","OwnOccMedVal","OwnOccHiQuart",
-           "RentLowQ","RentMedian","RentHighQ","MedRent","MedRentPctHousInc","MedOwnCostPctInc","MedOwnCostPctIncNoMtg","NumInShelters","NumStreet","PctForeignBorn","PctBornSameState","PctSameHouse85","PctSameCity85","PctSameState85",
-           "LemasSwornFT","LemasSwFTPerPop","LemasSwFTFieldOps","LemasSwFTFieldPerPop","LemasTotalReq","LemasTotReqPerPop","PolicReqPerOffic","PolicPerPop","RacialMatchCommPol","PctPolicWhite","PctPolicBlack","PctPolicHisp",
-           "PctPolicAsian","PctPolicMinor","OfficAssgnDrugUnits","NumKindsDrugsSeiz","PolicAveOTWorked","LandArea","PopDens","PctUsePubTrans","PolicCars","PolicOperBudg","LemasPctPolicOnPatr","LemasGangUnitDeploy",
+  colnames(ds) <- c("state", "county", "community", "communityname", "fold", "population", "householdsize", "racepctblack", "racePctWhite", "racePctAsian", "racePctHisp", "agePct12t21", "agePct12t29", "agePct16t24", "agePct65up", "numbUrban",
+           "pctUrban", "medIncome", "pctWWage", "pctWFarmSelf", "pctWInvInc", "pctWSocSec", "pctWPubAsst", "pctWRetire", "medFamInc", "perCapInc", "whitePerCap", "blackPerCap", "indianPerCap", "AsianPerCap", "OtherPerCap", "HispPerCap",
+           "NumUnderPov", "PctPopUnderPov", "PctLess9thGrade", "PctNotHSGrad", "PctBSorMore", "PctUnemployed", "PctEmploy", "PctEmplManu", "PctEmplProfServ", "PctOccupManu", "PctOccupMgmtProf", "MalePctDivorce", "MalePctNevMarr", "FemalePctDiv",
+           "TotalPctDiv", "PersPerFam", "PctFam2Par", "PctKids2Par", "PctYoungKids2Par", "PctTeen2Par", "PctWorkMomYoungKids", "PctWorkMom", "NumIlleg", "PctIlleg", "NumImmig", "PctImmigRecent", "PctImmigRec5", "PctImmigRec8", "PctImmigRec10",
+           "PctRecentImmig", "PctRecImmig5", "PctRecImmig8", "PctRecImmig10", "PctSpeakEnglOnly", "PctNotSpeakEnglWell", "PctLargHouseFam", "PctLargHouseOccup", "PersPerOccupHous", "PersPerOwnOccHous", "PersPerRentOccHous", "PctPersOwnOccup",
+           "PctPersDenseHous", "PctHousLess3BR", "MedNumBR", "HousVacant", "PctHousOccup", "PctHousOwnOcc", "PctVacantBoarded", "PctVacMore6Mos", "MedYrHousBuilt", "PctHousNoPhone", "PctWOFullPlumb", "OwnOccLowQuart", "OwnOccMedVal", "OwnOccHiQuart",
+           "RentLowQ", "RentMedian", "RentHighQ", "MedRent", "MedRentPctHousInc", "MedOwnCostPctInc", "MedOwnCostPctIncNoMtg", "NumInShelters", "NumStreet", "PctForeignBorn", "PctBornSameState", "PctSameHouse85", "PctSameCity85", "PctSameState85",
+           "LemasSwornFT", "LemasSwFTPerPop", "LemasSwFTFieldOps", "LemasSwFTFieldPerPop", "LemasTotalReq", "LemasTotReqPerPop", "PolicReqPerOffic", "PolicPerPop", "RacialMatchCommPol", "PctPolicWhite", "PctPolicBlack", "PctPolicHisp",
+           "PctPolicAsian", "PctPolicMinor", "OfficAssgnDrugUnits", "NumKindsDrugsSeiz", "PolicAveOTWorked", "LandArea", "PopDens", "PctUsePubTrans", "PolicCars", "PolicOperBudg", "LemasPctPolicOnPatr", "LemasGangUnitDeploy",
            "LemasPctOfficDrugUn", "PolicBudgPerPop", "Target")
   #Remove non predictive variables
   ds$state <- NULL
@@ -54,8 +54,8 @@ LoadCommunitiesDataset <- function() {
   ds$fold <- NULL
   #To Ordered
   ds$LemasGangUnitDeploy <- factor(ds$LemasGangUnitDeploy, ordered = TRUE)
-  levels(ds$LemasGangUnitDeploy) <- c("No","PartTime", "Yes")
-  
+  levels(ds$LemasGangUnitDeploy) <- c("No", "PartTime", "Yes")
+
   simil.types <- list(ordratio = c("LemasGangUnitDeploy"))
   formula <- Target ~ .
   return(list(name = "Communities", dataset = ds, formula = formula, simil.types = simil.types))
@@ -74,9 +74,9 @@ LoadMvDataset <- function() {
   ds$X8 <- as.factor(ds$X8)
 
   # For Gower
-  simil.types <- list(symm=c('X7','X8'))
+  simil.types <- list(symm = c('X7', 'X8'))
 
-  return(list(name='MV', dataset = ds, simil.types = simil.types))
+  return(list(name = 'MV', dataset = ds, simil.types = simil.types))
 }
 
 LoadWaveDataset <- function() {
@@ -86,7 +86,7 @@ LoadWaveDataset <- function() {
   simil.types <- list()
 
   formula <- Target ~ .
-  return(list(name='Wave', dataset = ds, formula = formula, simil.types = simil.types))
+  return(list(name = 'Wave', dataset = ds, formula = formula, simil.types = simil.types))
 }
 
 
@@ -153,7 +153,7 @@ LoadHeartDataset <- function() {
   heart$V13 <- newvalues[match(heart$V13, oldvalues)]
 
   # For Gower
-  simil.types <- list(ordratio = c("V11"), symm=c('V2','V6','V9'))
+  simil.types <- list(ordratio = c("V11"), symm = c('V2', 'V6', 'V9'))
 
   formula <- Target ~ .
   return(list(name = 'Heart', dataset = heart, formula = formula, simil.types = simil.types))
@@ -161,9 +161,9 @@ LoadHeartDataset <- function() {
 
 
 LoadMammographicDataset <- function() {
-  ds <- read.table("datasets/classification/Mammographic/mammographic_masses.data", sep=",", na.strings = "?")
+  ds <- read.table("datasets/classification/Mammographic/mammographic_masses.data", sep = ",", na.strings = "?")
 
-  colnames(ds) <- c('birads', 'age', 'shape','margin','density','severity')
+  colnames(ds) <- c('birads', 'age', 'shape', 'margin', 'density', 'severity')
 
   ds$birads[(!is.na(ds$birads)) & ds$birads == 55] <- 5
 
@@ -182,13 +182,29 @@ LoadMammographicDataset <- function() {
   ds$density <- as.factor(ds$density)
   names(ds$density) <- c("high", "iso", "low", "fat")
 
-  
+
   # For Gower
   simil.types <- list(ordratio = c("density"))
   formula <- severity ~ .
   return(list(name = 'Mammographic', dataset = ds, formula = formula, simil.types = simil.types))
 }
 
+LoadPimaDataset <- function() {
+  ds <- read.table("datasets/classification/Pima/pima.dat", sep = ",")
+  colnames(ds) <- c("Pregnancies", "Plasma", "Blood", "Skin", "Serum", "BMI", "Pedigree", "Age", "Target")
+  ds$Target <- factor(ds$Target, labels = c("No", "Yes"))
+
+  # Missing values
+  ds[ds$Plasma == 0, "Plasma"] <- NA # 5
+  ds[ds$Blood == 0, "Blood"] <- NA # 35
+  ds[ds$Skin == 0, "Skin"] <- NA # 227
+  ds[ds$Serum == 0, "Serum"] <- NA # 374
+  ds[ds$BMI == 0, "BMI"] <- NA # 11
+
+  simil.types <- list(ordratio = c("Pregnancies", "Age"))
+  formula <- Target ~ .
+  return(list(name = 'Pima', dataset = ds, formula = formula, simil.types = simil.types))
+}
 
 LoadMushroomDataset <- function() {
   ds <- read.table("datasets/classification/Mushroom/agaricus-lepiota.data", sep = ",", na.strings = "?")
@@ -305,7 +321,7 @@ LoadHorseColic <- function(targetId) {
 LoadHorseColicV2 <- function() {
   r <- LoadHorseColic()
   ds <- r$dataset
-  
+
   # Remove last variables (other possible targets)
   ds <- ds[c(1:21, 23)]
 
@@ -327,7 +343,7 @@ LoadHorseColicV2 <- function() {
 }
 
 LoadCensus <- function() {
-  ds <- read.table('./datasets/classification/Census/census-income.data', sep = ',', na.strings = '?', strip.white= TRUE)
+  ds <- read.table('./datasets/classification/Census/census-income.data', sep = ',', na.strings = '?', strip.white = TRUE)
   colnames(ds)[42] <- 'Target'
 
   # For Gower
@@ -343,23 +359,74 @@ LoadCensus <- function() {
 ##################
 
 LoadAudiologyDs <- function() {
-  ds <- read.table('./datasets/classification/Audiology/audiology.standardized.data', sep = ',', na.string = '?')
+  audiology.tr <- read.table("./datasets/classification/Audiology/audiology.standardized.data", sep = ",", na.strings = "?")
+  audiology.te <- read.table("./datasets/classification/Audiology/audiology.standardized.test", sep = ",", na.strings = "?")
+  ds <- rbind(audiology.tr, audiology.te)
 
-  for (i in c(1, 3, 7, 9:58, 61:63, 65, 67:69))
+  # Remove identifier
+  ds <- ds[-70]
+
+  # Remove non-informative variables
+  ds <- ds[-c(8, 9, 12, 13, 16, 20, 21, 22, 23, 24, 28, 29, 30, 31, 32, 33, 34, 35, 36, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 55, 56, 61, 63, 67, 68, 69)]
+
+  # Remove instances with all values missing
+  ds <- Filter(function(x)!all(is.na(x)), ds)
+
+  # Remove instances that do not have a defined class
+  ds <- ds[!is.na(ds[, "V71"]),]
+
+
+  colnames(ds)[32] <- "Target"
+
+  t.oldvalues <- c("cochlear_age", "cochlear_age_and_noise", "cochlear_age_plus_poss_menieres", "cochlear_noise_and_heredity", "cochlear_poss_noise", "cochlear_unknown", "mixed_cochlear_age_fixation", "mixed_cochlear_age_otitis_media", "mixed_cochlear_age_s_om", "mixed_cochlear_unk_discontinuity", "mixed_cochlear_unk_fixation", "mixed_cochlear_unk_ser_om",
+    "mixed_poss_central_om", "mixed_poss_noise_om", "normal_ear", "otitis_media", "poss_central", "possible_brainstem_disorder", "possible_menieres", "retrocochlear_unknown", "acoustic_neuroma", "bells_palsy", "conductive_discontinuity", "conductive_fixation")
+  t.newvalues <- factor(c(rep("Cochlear", 6), rep("Mixed", 8), "Normal", rep("Other", 9))) # Make this a factor
+  ds$Target <- t.newvalues[match(ds$Target, t.oldvalues)]
+
+  # Recode predictors appropriately
+
+  # V2:  air()
+  ds$V2 <- ordered(ds$V2)
+
+  # V4:  ar_c()
+  oldvalues <- c("absent", "normal", "elevated")
+  newvalues <- factor(c("1Absent", "2Normal", "3Elevated"), ordered = TRUE)
+  ds$V4 <- newvalues[match(ds$V4, oldvalues)]
+
+  # V5:  ar_u()
+  oldvalues <- c("absent", "normal", "elevated")
+  newvalues <- factor(c("1Absent", "2Normal", "3Elevated"), ordered = TRUE)
+  ds$V5 <- newvalues[match(ds$V5, oldvalues)]
+
+  # V6: bone()
+  # WARNING: there  is a value 'unmeasured', which we also code as NA
+  ds$V6[ds$V6 == "unmeasured"] <- NA
+  ds$V6 <- ordered(ds$V6)
+
+  # V59:  o_ar_c()
+  oldvalues <- c("absent", "normal", "elevated")
+  newvalues <- factor(c("1Absent", "2Normal", "3Elevated"), ordered = TRUE)
+  ds$V59 <- newvalues[match(ds$V59, oldvalues)]
+
+  # V60:  o_ar_u()
+  oldvalues <- c("absent", "normal", "elevated")
+  newvalues <- factor(c("1Absent", "2Normal", "3Elevated"), ordered = TRUE)
+  ds$V60 <- newvalues[match(ds$V60, oldvalues)]
+
+  # V64:  speech()
+  ds$V64[ds$V64 == "unmeasured"] <- NA
+  oldvalues <- c("very_poor", "poor", "normal", "good", "very_good")
+  newvalues <- factor(c("1very_poor", "2poor", "3normal", "4good", "5very_good"), ordered = TRUE)
+  ds$V64 <- newvalues[match(ds$V64, oldvalues)]
+
+  for (i in c(1, 3, 7:25, 28, 30))
     ds[, i] <- as.logical(ds[, i] == 't')
-  ds$V2 <- as.ordered(ds$V2)
-  ds$V22 <- NULL
-  ds$V29 <- NULL
-  ds$V32 <- NULL
-  ds$V42 <- NULL
-  ds$V49 <- NULL
-  ds$V48 <- NULL
-  ds$V51 <- NULL
-  ds$V70 <- NULL
+  
 
   # For Gower
-  simil.types <- list()
-  formula <- V71 ~ .
+  simil.types <- list(ordratio = c("V2", "V4", "V5", "V6", "V59", "V60", "V64"), symm = paste("V", c(1, 3, 7, 10, 11, 14, 15, 17, 18, 19, 22, 26, 27, 37, 38, 39, 40, 53, 54, 57, 58, 62, 65), sep = ""))
+
+  formula <- Target ~ .
   return(list(name = 'Audiology', dataset = ds, formula = formula, simil.types = simil.types))
 }
 
@@ -403,7 +470,7 @@ LoadAnnealing <- function() {
   # For Gower
   simil.types <- list()
   formula <- Target ~ .
-  return(list(name='Annealing', dataset = ds, formula = formula, simil.types = simil.types))
+  return(list(name = 'Annealing', dataset = ds, formula = formula, simil.types = simil.types))
 }
 
 LoadContraceptiveDs <- function() {
@@ -418,7 +485,7 @@ LoadContraceptiveDs <- function() {
   ds$V10 <- as.factor(ds$V10)
   simil.types <- list()
   formula <- V10 ~ .
-  return(list(name='Contraceptive', dataset = ds, formula = formula, simil.types = simil.types))
+  return(list(name = 'Contraceptive', dataset = ds, formula = formula, simil.types = simil.types))
 }
 
 LoadDiabetis <- function() {
@@ -433,7 +500,7 @@ LoadDiabetis <- function() {
   # For Gower
   simil.types <- list()
   formula <- readmitted ~ .
-  return(list(name='Diabetis', dataset = ds, formula = formula, simil.types = simil.types))
+  return(list(name = 'Diabetis', dataset = ds, formula = formula, simil.types = simil.types))
 }
 
 ############
@@ -443,5 +510,5 @@ LoadAdultDataset <- function() {
   colnames(ds)[15] <- "Target"
   simil.types <- list()
   formula <- Target ~ .
-  return(list(name='Adult', dataset = ds, formula = formula, simil.types = simil.types))
+  return(list(name = 'Adult', dataset = ds, formula = formula, simil.types = simil.types))
 }
