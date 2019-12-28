@@ -68,3 +68,18 @@ plotBenchMark2 <- function(doPlot = TRUE) {
   if (doPlot) barplot(ds)
   ds
 }
+
+
+getColumnClass <- function(ds) {
+  r <- unlist(lapply(1:ncol(ds), function(i) class(ds[, i])[1]))
+  names(r) <- colnames(ds)
+  r
+}
+
+getColumnClassTable <- function(ds) {
+  table(unlist(getColumnClass(ds)))
+}
+
+getPercentageOfNa <- function(ds) {
+  sum(is.na(ds))/(nrow(ds)*ncol(ds))
+}

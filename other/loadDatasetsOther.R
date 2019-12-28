@@ -66,3 +66,14 @@ LoadGlass <- function() {
 
   return(list(dataset = ds, simil.types = simil.types))
 }
+
+
+############
+# Other #
+LoadAdultDataset <- function() {
+  ds <- read.table("datasets/classification/+/Adult/adult.data", sep = ",", strip.white = TRUE, na.strings = "?")
+  colnames(ds)[15] <- "Target"
+  simil.types <- list()
+  formula <- Target ~ .
+  return(list(name = 'Adult', dataset = ds, formula = formula, simil.types = simil.types))
+}
