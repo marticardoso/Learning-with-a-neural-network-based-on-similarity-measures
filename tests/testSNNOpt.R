@@ -11,6 +11,7 @@ library(mlbench)
 library(tree)
 library(ggplot2)
 library(xtable)
+library(beepr)
 #First we load some useful function for the model selection task
 source('SNN.R')
 source('tests/testSNNOptUtils.R')
@@ -74,3 +75,11 @@ ggplot(data = df, aes(x = method, y = timeMean, group = dataset, color = dataset
   geom_point()
 
 xtable(df$shortResults)
+
+
+
+
+
+beep(sound = 8)
+Sys.sleep(5)
+beep(sound = 4)
