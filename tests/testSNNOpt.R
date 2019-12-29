@@ -12,11 +12,12 @@ library(tree)
 library(ggplot2)
 library(xtable)
 library(beepr)
+
 #First we load some useful function for the model selection task
 source('SNN.R')
 source('tests/testSNNOptUtils.R')
 source('loadDatasets.R')
-
+source('benchmarkutils.R')
 
 ################
 ## Regression ##
@@ -54,15 +55,14 @@ ggplot(data = df$shortResults, aes(x = method, y = timeMean, group = dataset, co
 heart <- LoadHeartDataset()
 mammographic <- LoadMammographicDataset()
 mushroom <- LoadMushroomDataset()
-adult <- LoadAdultDataset()
 
-df <- runSNNOptTests(list(heart, mammographic), nRuns = 50, classification = TRUE)
-
-
-df$fullResults$fullMethod <- paste(df$fullResults$clust.method, paste('OptP:', df$fullResults$method), ifelse(df$fullResults$reg,'Reg','NoReg'), sep = '\n')
+df <- runSNNOptTests(list(mushroom,heart), nRuns = 3, classification = TRUE)
+soundEnd()
 ggplot(df$fullResults[df$fullResults$dataset == 'Heart',], aes(x = fullMethod, y = saccOrNRMSE)) +
   geom_boxplot() #+ geom_jitter(shape = 16, position = position_jitter(0.2))
 
+ggplot(df$fullResults[df$fullResults$dataset == 'Mammographic',], aes(x = fullMethod, y = saccOrNRMSE)) +
+  geom_boxplot() #+ geom_jitter(shape = 16, position = position_jitter(0.2))
 
 ggplot(data = df, aes(x = method, y = mean, group = dataset, color = dataset)) +
   geom_errorbar(aes(ymin = mean - sd, ymax = mean + sd), width = .1) +
@@ -80,6 +80,3 @@ xtable(df$shortResults)
 
 
 
-beep(sound = 8)
-Sys.sleep(5)
-beep(sound = 4)

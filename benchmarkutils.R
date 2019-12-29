@@ -1,5 +1,5 @@
 #library(microbenchmark)
-
+library(beepr)
 #Get current milisecond
 milisec <- function(ini=0) {
   return(as.numeric(Sys.time()) * 1000 - ini)
@@ -82,4 +82,10 @@ getColumnClassTable <- function(ds) {
 
 getPercentageOfNa <- function(ds) {
   sum(is.na(ds))/(nrow(ds)*ncol(ds))
+}
+
+soundEnd <- function() {
+  beep(sound = 8)
+  Sys.sleep(5)
+  beep(sound = 4)
 }

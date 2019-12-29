@@ -322,7 +322,7 @@ snn.numberOfClusters <- function(N, hp = 0.1, nclust.method = 'C', trace = TRUE)
   else
     stop(gettextf("Number of clusters method '%s' is not supported. Methods supported: Uniform (U), Binomial (B), Poisson (P) and Constant(C).", nclust.method))
 
-  M <- max(M, 2)
+  M <- min(max(M, 2), 4000)
   if (trace) cat(" - ", M, "\n")
   M
 }

@@ -42,7 +42,9 @@ runSNNOptTests <- function(datasets, nRuns = 10, classification = FALSE) {
     pOptMethods <- list(NULL, list(method = 'Opt'), list(method = 'GCV'), list(method = 'CV'))
     allowRegularization <- c(TRUE, FALSE, TRUE, TRUE)
   }
- 
+
+  clust.methods <- c('PAM', 'R')
+  regOptions <- c(TRUE, FALSE)
   
   fullResults <- data.frame()
   shortResult <- data.frame() 
@@ -54,11 +56,11 @@ runSNNOptTests <- function(datasets, nRuns = 10, classification = FALSE) {
     seeds <- sapply(1:nRuns, function(i) round(runif(1) * 10000000))
 
     for (j in 1:length(pOptMethods)) {
-      for (clust.method in c('PAM', 'R')) {
-        for (reg in c(TRUE, FALSE)) {
-          if (!reg || allowRegularization[j]) {
-            if (!reg) cat('Executing method', pNames[j], '\n')
-            else cat('Executing method', pNames[j], '*(Reg) \n')
+      for (clust.method in clust.methods) {
+        for (reg in regOptions) {
+          if ((clust.method=='R' || nrow(ds$dataset) < 4000) && (!reg || allowRegularization[j])) {
+            if (!reg) cat('Executing method', pNames[j], ',', clust.method, '\n')
+            else cat('Executing method', pNames[j], ',', clust.method, '*(Reg) \n')
 
             nrmseOrAcc <- numeric(nRuns)
             times <- numeric(nRuns)
@@ -68,7 +70,7 @@ runSNNOptTests <- function(datasets, nRuns = 10, classification = FALSE) {
               set.seed(seeds[i])
               cat(i, '')
               myTic()
-              r1 <- snn(ds$formula, subset = sampleByRun[, i], ds$dataset, p.control = pOptMethods[[j]], trace = FALSE, regularization = reg, clust.control = list(clust.method = clust.method))
+              r1 <- snn(ds$formula, subset = sampleByRun[, i], ds$dataset, simil.types = ds$simil.types, p.control = pOptMethods[[j]], trace = FALSE, regularization = reg, clust.control = list(clust.method = clust.method))
               nrmseOrAcc[i] <- ifelse(!is.null(r1$nrmse), r1$nrmse, r1$testAccuracy)
               times[i] <- myToc(print = FALSE)
 
@@ -84,10 +86,39 @@ runSNNOptTests <- function(datasets, nRuns = 10, classification = FALSE) {
       }
     }
     save(shortResult, fullResults, file = "tests/TMPData.Rdata")
+
+    #Decision Tree
+    cat('Executing method: decision tree \n')
+    y <- model.response(model.frame(ds$formula, data = ds$dataset, na.action = NULL, drop.unused.levels = TRUE))
+    nrmseOrAcc <- numeric(nRuns)
+    times <- numeric(nRuns)
+    cat('  # Runs: ')
+    for (i in 1:nRuns) {
+      cat(i, '')
+      iniTime <- myTic()
+      model.tree <- tree(ds$formula, data = ds$dataset[sampleByRun[, i],])
+      pred <- predict(model.tree, ds$dataset[-sampleByRun[, i],], type = 'class')
+      if (classification) {
+        nrmseOrAcc[i] <- accuracy(pred, y[-sampleByRun[, i]])
+      } else {
+        nrmseOrAcc[i] <- nrmse(pred, y[-sampleByRun[, i]])
+      }
+      times[i] <- myToc(ini = iniTime, print = FALSE)
+
+      newRow <- data.frame(dataset = ds$name, method = 'tree', reg = FALSE, clust.method = '', saccOrNRMSE = nrmseOrAcc[i], time = times[i], p = -1, nProt = 0)
+      fullResults <- rbind(fullResults, newRow)
+    }
+    cat('\n')
+    newRow <- data.frame(dataset = ds$name, method = 'tree', reg = FALSE, clust.method = '', accMean = mean(nrmseOrAcc), accSd = sd(nrmseOrAcc), timeMean = mean(times), timeSd = sd(times))
+    shortResult <- rbind(shortResult, newRow)
   }
-  
+
+  fullResults$fullMethod <- paste(fullResults$clust.method, paste('OptP:', fullResults$method), fullResults$reg, sep = '\n')
+  fullResults[fullResults$method=='tree',]$fullMethod <- 'Tree'
   z <- list()
   z$fullResults <- fullResults
   z$shortResults <- shortResult
+
+  
   z
 }

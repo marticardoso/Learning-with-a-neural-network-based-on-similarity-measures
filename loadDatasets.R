@@ -224,7 +224,7 @@ LoadMushroomDataset <- function() {
   ds$V11 <- as.logical(ds$V11 == 't')
   ds$V19 <- as.numeric(ds$V19)-1
   simil.types <- list(symm = c('V9', 'V11'), asymm=c('V5'))
-  formula <- severity ~ .
+  formula <- Target ~ .
   return(list(name = 'Mushroom', dataset = ds, formula = formula, simil.types = simil.types))
 }
 
