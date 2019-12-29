@@ -288,7 +288,7 @@ optimize_p_kFoldCV <- function(simils, t, regularization = FALSE, control = NULL
   if (regularization) lambdas <- 10 ^ seq(-5, 2, length = 50)
   else lambdas <- c(0)
   kFolds <- 10
-  useAccuracy <- FALSE
+  useAccuracy <- TRUE
   if(!is.null(control)){
     if (!is.null(control$ps)) ps <- control$ps
     if (!is.null(control$lambdas)) lambdas <- control$lambdas
@@ -551,7 +551,8 @@ optimize_p_oneOpt <- function(simils, t, pInitial = 0.1, ..., trace = TRUE) {
   initialValues <- c(initialW, pInitial)
   res <- optim(initialValues, func, grad, method = "BFGS")
   z <- list()
-  z$newP <- max(0.01, res$par[length(res$par)])
+  z$newP <- res$par[length(res$par)]
+  if(z$newP < 1e-3) z$newP <- pInitial
   if (is.matrix(initialW)) z$w <- matrix(res$par[1:length(res$par) - 1], ncol = ncol(initialW))
   else z$w <- res$par[1:length(res$par) - 1]
   z$E <- res$value
