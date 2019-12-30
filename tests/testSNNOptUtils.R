@@ -70,8 +70,6 @@ runSNNOptTests <- function(datasets, nRuns = 10, classification = FALSE, onlyTre
   shortResult <- data.frame() 
   for (ds in datasets) {
     cat('Dataset: ', ds$name, '\n')
-    #nrmseOrAcc <- matrix(0, nRuns, length(pOptMethods), dimnames = list(1:nRuns, pNames))
-    #times <- matrix(0, nRuns, length(pOptMethods), dimnames = list(1:nRuns, pNames))
     sampleByRun <- sapply(1:nRuns, function(i) sampleTwoThirds(ds$dataset))
     seeds <- sapply(1:nRuns, function(i) round(runif(1) * 10000000))
 
@@ -95,7 +93,7 @@ runSNNOptTests <- function(datasets, nRuns = 10, classification = FALSE, onlyTre
                 nrmseOrAcc[i] <- ifelse(!is.null(r1$nrmse), r1$nrmse, r1$testAccuracy)
                 times[i] <- myToc(print = FALSE)
 
-                newRow <- data.frame(dataset = ds$name, method = pNames[j], reg = reg, clust.method = clust.method, saccOrNRMSE = nrmseOrAcc[i], time = times[i], p = r1$p, nProt = nrow(r1$prototypes))
+                newRow <- data.frame(dataset = ds$name, method = pNames[j], reg = reg, clust.method = clust.method, run = i, saccOrNRMSE = nrmseOrAcc[i], time = times[i], p = r1$p, nProt = nrow(r1$prototypes))
                 fullResults <- rbind(fullResults, newRow)
               }
               cat('\n')
@@ -131,8 +129,7 @@ runSNNOptTests <- function(datasets, nRuns = 10, classification = FALSE, onlyTre
         nrmseOrAcc[i] <- nrmse(pred, y[-sampleByRun[, i]])
       }
       times[i] <- myToc(ini = iniTime, print = FALSE)
-
-      newRow <- data.frame(dataset = ds$name, method = 'tree', reg = FALSE, clust.method = '', saccOrNRMSE = nrmseOrAcc[i], time = times[i], p = -1, nProt = 0)
+      newRow <- data.frame(dataset = ds$name, method = 'tree', reg = FALSE, clust.method = '', run = i, saccOrNRMSE = nrmseOrAcc[i], time = times[i], p = -1, nProt = 0)
       fullResults <- rbind(fullResults, newRow)
     }
     cat('\n')
