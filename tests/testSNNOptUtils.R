@@ -58,7 +58,7 @@ runSNNOptTests <- function(datasets, nRuns = 10, classification = FALSE) {
     for (j in 1:length(pOptMethods)) {
       for (clust.method in clust.methods) {
         for (reg in regOptions) {
-          if ((clust.method=='R' || nrow(ds$dataset) < 4000) && (!reg || allowRegularization[j])) {
+          if ((nrow(ds$dataset) < 4000 || pNames[j]!='CV') && (clust.method=='R' || nrow(ds$dataset) < 4000) && (!reg || allowRegularization[j])) {
             if (!reg) cat('Executing method', pNames[j], ',', clust.method, '\n')
             else cat('Executing method', pNames[j], ',', clust.method, '*(Reg) \n')
 
@@ -97,10 +97,12 @@ runSNNOptTests <- function(datasets, nRuns = 10, classification = FALSE) {
       cat(i, '')
       iniTime <- myTic()
       model.tree <- tree(ds$formula, data = ds$dataset[sampleByRun[, i],])
-      pred <- predict(model.tree, ds$dataset[-sampleByRun[, i],], type = 'class')
+
       if (classification) {
+        pred <- predict(model.tree, ds$dataset[-sampleByRun[, i],], type = 'class')
         nrmseOrAcc[i] <- accuracy(pred, y[-sampleByRun[, i]])
       } else {
+        pred <- predict(model.tree, ds$dataset[-sampleByRun[, i],])
         nrmseOrAcc[i] <- nrmse(pred, y[-sampleByRun[, i]])
       }
       times[i] <- myToc(ini = iniTime, print = FALSE)

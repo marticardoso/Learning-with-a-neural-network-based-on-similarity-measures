@@ -75,8 +75,8 @@ LoadMvDataset <- function() {
 
   # For Gower
   simil.types <- list(symm = c('X7'))
-
-  return(list(name = 'MV', dataset = ds, simil.types = simil.types))
+  formula <- Target ~ .
+  return(list(name = 'MV', dataset = ds, formula = formula, simil.types = simil.types))
 }
 
 LoadWaveDataset <- function() {
