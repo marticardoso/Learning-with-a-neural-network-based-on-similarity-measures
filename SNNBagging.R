@@ -4,12 +4,12 @@ source('MoE.R')
 # Trace level
 
 
-snn.bagging <- function(formula, data, subset = NULL, nSNN = 10,
+snn.bagging <- function(formula, data, subset = NULL, nSNN = 100,
   simil.types = list(), regularization = FALSE, snn.reg = FALSE,
   runDaisyOnce = FALSE,
   useGlobalDaisyTransformations = TRUE,
   snnbag.expectedRows = 0.5,
-  snnbag.rowMethod = 'U',
+  snnbag.rowMethod = 'P',
   bagging.method = 'B',
   ..., trace = TRUE) {
   if (!is.null(subset) && length(subset) < nrow(data)) data.train <- data[subset,]
@@ -52,6 +52,7 @@ snn.bagging <- function(formula, data, subset = NULL, nSNN = 10,
     clustering <- pam(clust.data, k = nSNN, metric = "euclidean", stand = FALSE, diss = TRUE, keep.diss = FALSE, keep.data = FALSE)$clustering
   }
   snn.sets <- lapply(1:nSNN, function(snnId) {
+    #print(snnId)
     if (bagging.method == "E") {
       bag.Ids <- names(which(clustering == snnId))
     } else {

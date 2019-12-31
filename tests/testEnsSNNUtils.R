@@ -3,23 +3,23 @@ source("SNNBagging.R")
 library(randomForest)
 
 runEnsSNNTests <- function(datasets, nRuns = 10, classification = FALSE, onlyRandomForest = FALSE) {
-  set.seed(1234)
+  
   if (classification) {
-    ensMethods = c('A', 'A2', 'B', 'C', 'D', 'E')
+    ensMethods = c('A', 'A2', 'B')#, 'C', 'D', 'E')
   } else {
-    ensMethods = c('A', 'B', 'C', 'D', 'E')
+    ensMethods = c('A', 'B') #'C', 'D') #, 'E')
   }
 
-  clust.methods <- c('PAM', 'R')
+  clust.methods <- c('PAM') #c('PAM', 'R')
   
   fullResults <- data.frame()
   shortResult <- data.frame() 
   for (ds in datasets) {
     cat('Dataset: ', ds$name, '\n')
-    #nrmseOrAcc <- matrix(0, nRuns, length(pOptMethods), dimnames = list(1:nRuns, pNames))
-    #times <- matrix(0, nRuns, length(pOptMethods), dimnames = list(1:nRuns, pNames))
-    sampleByRun <- sapply(1:nRuns, function(i) sampleTwoThirds(ds$dataset))
-    seeds <- sapply(1:nRuns, function(i) round(runif(1) * 10000000))
+    set.seed(1998)
+    nRunsDs <- ifelse(nrow(ds$dataset) < 4000, nRuns, min(nRuns, 20))
+    sampleByRun <- sapply(1:nRunsDs, function(i) sampleTwoThirds(ds$dataset))
+    seeds <- sapply(1:nRunsDs, function(i) round(runif(1) * 10000000))
 
     if (!onlyRandomForest) {
       for (ensMethod in ensMethods) {
@@ -27,11 +27,11 @@ runEnsSNNTests <- function(datasets, nRuns = 10, classification = FALSE, onlyRan
             if ( (clust.method == 'R' || nrow(ds$dataset) < 4000)) {
               cat('Executing method', ensMethod, ',', clust.method, ' \n')
 
-              nrmseOrAcc <- numeric(nRuns)
-              times <- numeric(nRuns)
+              nrmseOrAcc <- numeric(nRunsDs)
+              times <- numeric(nRunsDs)
 
               cat('  # Runs: ')
-              for (i in 1:nRuns) {
+              for (i in 1:nRunsDs) {
                 set.seed(seeds[i])
                 cat(i, '')
                 myTic()
@@ -57,19 +57,20 @@ runEnsSNNTests <- function(datasets, nRuns = 10, classification = FALSE, onlyRan
     #Random Forest
     cat('Executing method: Random Forest \n')
     y <- model.response(model.frame(ds$formula, data = ds$dataset, na.action = NULL, drop.unused.levels = TRUE))
-    nrmseOrAcc <- numeric(nRuns)
-    times <- numeric(nRuns)
+    nrmseOrAcc <- numeric(nRunsDs)
+    times <- numeric(nRunsDs)
     cat('  # Runs: ')
-    for (i in 1:nRuns) {
+    ds4RF <- fixDatasetForRF(ds$dataset)
+    for (i in 1:nRunsDs) {
       cat(i, '')
       iniTime <- myTic()
-      model.tree <- randomForest(ds$formula, data = ds$dataset[sampleByRun[, i],], na.action = na.roughfix)
+      model.tree <- randomForest(ds$formula, data = ds4RF[sampleByRun[, i],], na.action = na.roughfix)
 
       if (classification) {
-        pred <- predict(model.tree, na.roughfix(ds$dataset[-sampleByRun[, i],]), type = 'class')
+        pred <- predict(model.tree, ds4RF[-sampleByRun[, i],], type = 'class')
         nrmseOrAcc[i] <- accuracy(pred, y[-sampleByRun[, i]])
       } else {
-        pred <- predict(model.tree, na.roughfix(ds$dataset[-sampleByRun[, i],]))
+        pred <- predict(model.tree, ds4RF[-sampleByRun[, i],])
         nrmseOrAcc[i] <- nrmse(pred, y[-sampleByRun[, i]])
       }
       times[i] <- myToc(ini = iniTime, print = FALSE)

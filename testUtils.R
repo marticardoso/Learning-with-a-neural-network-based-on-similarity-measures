@@ -108,3 +108,35 @@ runRegressionSNNOptTests <- function(formula, ds, nRuns = 10) {
   z$times <- times
   z
 }
+
+
+fixDatasetForTree <- function(ds) {
+
+  # Fix to many NA
+  ds[, 0.95 < (colSums(is.na(ds)) / nrow(ds))] <- NULL
+
+  #Fix more than 32 levels
+  for (colId in 1:ncol(ds)) {
+    if (is.factor(ds[, colId]) && nlevels(ds[, colId]) > 32) {
+      lev <- rownames(sort(table(ds[, colId]), decreasing = TRUE))
+      newLev <- c(lev[1:31], 'Other')
+      f <- as.vector(ds[, colId])
+      for (j in 32:length(lev))
+        f[f == lev[j]] <- 'Other'
+      ds[, colId] <- factor(f, levels = newLev)
+    }
+  }
+  ds
+}
+
+fixDatasetForRF <- function(ds) {
+
+  for (colId in 1:ncol(ds)) {
+    if (is.logical(ds[, colId])) {
+      ds[, colId] <- factor(ds[, colId])
+    }
+  }
+
+  ds <- na.roughfix(ds)
+  ds
+}

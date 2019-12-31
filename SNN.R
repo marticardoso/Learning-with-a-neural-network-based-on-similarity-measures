@@ -268,7 +268,7 @@ snn.findclusters <- function(N, clust.data, #Dataset
   clust.method <- 'PAM' # Clustering method
   clust.metric <- "euclidean"
   clust.stand <- FALSE
-  nclust.method <- 'U'
+  nclust.method <- 'P'
   hp <- 0.1
   if (!is.null(control)) {
     if (!is.null(control$clust.method)) clust.method <- control$clust.method
@@ -322,7 +322,7 @@ snn.numberOfClusters <- function(N, hp = 0.1, nclust.method = 'C', trace = TRUE)
   else
     stop(gettextf("Number of clusters method '%s' is not supported. Methods supported: Uniform (U), Binomial (B), Poisson (P) and Constant(C).", nclust.method))
 
-  M <- min(max(M, 2), 4000)
+  M <- min(max(M, 20), min(4000,N))
   if (trace) cat(" - ", M, "\n")
   M
 }
