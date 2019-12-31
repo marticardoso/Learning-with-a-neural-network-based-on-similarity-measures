@@ -39,8 +39,10 @@ daisy2.newObservations <- function(x, daisyObj, newdata = NULL)
     tT <- type$ordratio
     for(colName in names(type2[tT])){
       varLevels <- as.numeric(ordRatioLevels[[colName]])
-      cuts <- c(-Inf, varLevels[-1]-diff(varLevels)/2, Inf)
-      x[, colName] <- cut(x[,colName], breaks=cuts, labels=1:length(varLevels))
+      if (length(varLevels) > 0) {
+        cuts <- c(-Inf, varLevels[-1] - diff(varLevels) / 2, Inf)
+        x[, colName] <- cut(x[, colName], breaks = cuts, labels = 1:length(varLevels))
+      }
     }
     #x[, names(type2[tT])] <- unclass(as.ordered(x[, names(type2[tT])]))
     
