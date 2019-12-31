@@ -24,7 +24,7 @@ runEnsSNNTests <- function(datasets, nRuns = 10, classification = FALSE, onlyRan
     if (!onlyRandomForest) {
       for (ensMethod in ensMethods) {
         for (clust.method in clust.methods) {
-            if ( (clust.method == 'R' || nrow(ds$dataset) < 4000)) {
+            if ( (TRUE  || nrow(ds$dataset) < 4000)) {
               cat('Executing method', ensMethod, ',', clust.method, ' \n')
 
               nrmseOrAcc <- numeric(nRunsDs)
