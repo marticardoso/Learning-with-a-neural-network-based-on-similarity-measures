@@ -137,7 +137,8 @@ snn.fit <- function(x, y, daisyObj = NULL,
     dataScaled <- scale(learn.data)
     scaled_center <- attr(dataScaled, "scaled:center")
     scaled_scale <- attr(dataScaled, "scaled:scale")
-    learn.data <- data.frame(dataScaled)
+    scaled_scale[scaled_scale==0] <- 1
+    learn.data <- data.frame(scale(learn.data, center = scaled_center, scale = scaled_scale))
   }
   learn.data$Target <- y
 

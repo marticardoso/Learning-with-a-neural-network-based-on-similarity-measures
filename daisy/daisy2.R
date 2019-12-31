@@ -173,7 +173,7 @@ daisy2 <- function(x, metric = c("euclidean", "manhattan", "gower"),
   
   #Apply sqrt/squre if dissimilaries are unbalanced
   
-  disvQ <- quantile(disv, c(0.05,0.95))
+  disvQ <- quantile(disv, c(0.05,0.95), na.rm = TRUE)
   applySqrt <- fixUnbalancedDiss && disvQ[2]<=0.5
   applySqure <- fixUnbalancedDiss && disvQ[1]>= 0.5 
   if(applySqrt) {
@@ -185,9 +185,14 @@ daisy2 <- function(x, metric = c("euclidean", "manhattan", "gower"),
     warning('[Daisy2]: Applied square correction')
   }
   #gCDisv <<- disv
-  
+
+  meanDiss <- mean(disv, na.rm = TRUE)
+  if(is.na(meanDiss)) meanDiss <- 0.5
   ## give warning if some dissimilarities are missimg
-  if(anyNA(disv)) attr(disv, "NA.message") <- "NA-values in the dissimilarity matrix !"
+  if (anyNA(disv)) {
+    attr(disv, "NA.message") <- "NA-values in the dissimilarity matrix !"
+    disv[is.na(disv)] <- meanDiss
+  }
   
   ## construct S object -- "dist" methods are *there* !
   class(disv) <- dissiCl # see ./0aaa.R
@@ -213,6 +218,7 @@ daisy2 <- function(x, metric = c("euclidean", "manhattan", "gower"),
   if(exists("ordRatioLevels")) z$ordRatioLevels <- ordRatioLevels
   z$applySqrt <- applySqrt
   z$applySqure <- applySqure
+  z$meanDiss <- meanDiss
   attr(disv, "daisyObj") <- z
   
   disv

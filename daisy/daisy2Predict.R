@@ -124,8 +124,15 @@ daisy2.newObservations <- function(x, daisyObj, newdata = NULL)
   if(daisyObj$applySqure) disv <- disv^2
   
   ## give warning if some dissimilarities are missimg
-  if(anyNA(disv)) attr(disv, "NA.message") <- "NA-values in the dissimilarity matrix !"
-  
+  if (anyNA(disv)) {
+    attr(disv, "NA.message") <- "NA-values in the dissimilarity matrix !"
+    if (is.null(daisyObj$meanDiss)) disv[is.na(disv)] <- mean(disv, na.rm = TRUE)
+    else disv[is.na(disv)] <- daisyObj$meanDiss
+
+    if (anyNA(disv)) {
+      disv[is.na(disv)] <- 0.5
+    }
+  }
   ## construct S object -- "dist" methods are *there* !
   if (n == nX) {
     class(disv) <- dissiCl
