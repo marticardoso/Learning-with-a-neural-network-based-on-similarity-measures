@@ -75,7 +75,7 @@ ggplot(data = df$shortResults, aes(x = method, y = timeMean, group = dataset, co
 #############
 
 hc <- LoadBinClassProblems()
-df <- runSNNOptTests(hc, nRuns = 3, classification = TRUE, onlyTree = TRUE)
+df <- runSNNOptTests(hc, nRuns = 50, classification = TRUE, onlyTree = FALSE)
 
 heart <- LoadHeartDataset()
 mammographic <- LoadMammographicDataset()
