@@ -87,8 +87,9 @@ heart <- LoadHeartDataset()
 mammographic <- LoadMammographicDataset()
 mushroom <- LoadMushroomDataset()
 
-df <- runSNNOptTests(list(mushroom,heart), nRuns = 3, classification = TRUE)
+df <- runEnsSNNTests(list(mushroom, heart), nRuns = 5, classification = TRUE, onlyRandomForest = FALSE)
 soundEnd()
+
 ggplot(df$fullResults[df$fullResults$dataset == 'Heart',], aes(x = fullMethod, y = saccOrNRMSE)) +
   geom_boxplot() #+ geom_jitter(shape = 16, position = position_jitter(0.2))
 
