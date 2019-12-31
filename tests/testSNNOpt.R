@@ -1,9 +1,6 @@
 rm(list = ls())
 set.seed(104)
 
-# Set environment
-setwd(".")
-
 
 library(rattle.data)
 library(faraway)
