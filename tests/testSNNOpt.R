@@ -33,10 +33,10 @@ r[[5]]<-NULL
 df <- runSNNOptTests(r, nRuns = 50)
 
 #save(df, file = "tests/regressionAutomAutoMPGAndCommunities2.Rdata")
-#load('data/RegData.Rdata')
-#df <- list(fullResults = fullResults, shortResult = shortResult)
+#load('tests/ExpSNNBinClass.Rdata')
 #fullResults$fullMethod <- paste(fullResults$clust.method, paste('P:', fullResults$method), ifelse(fullResults$reg,'Reg','-'), sep = '\n')
 #fullResults[fullResults$method == 'tree',]$fullMethod <- 'Tree'
+#df <- list(fullResults = fullResults, shortResult = shortResult)
 
 ggplot(df$fullResults[df$fullResults$dataset == 'AutoMPG',], aes(x = fullMethod, y = saccOrNRMSE)) +
   geom_boxplot() + ggtitle('AutoMPG dataset') + ylab('NRMSE') + xlab(NULL) #+ geom_jitter(shape = 16, position = position_jitter(0.2))
