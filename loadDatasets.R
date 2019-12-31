@@ -398,7 +398,7 @@ LoadBinClassProblems <- function() {
   d4 <- LoadMammographicDataset()
   d5 <- LoadMushroomDataset()
   d6 <- LoadCensus()
-  list(d1, d2, d3, d4, d5,d6)
+  list(d1, d3, d2, d4, d5,d6)
 }
 
 ##################
