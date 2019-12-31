@@ -28,6 +28,9 @@ autoMPG <- LoadAutoMPGDS()
 communities <- LoadCommunitiesDataset()
 df <- runSNNOptTests(list(automobile, autoMPG), nRuns = 5)
 
+r <- LoadRegressionProblems()
+r[[5]]<-NULL
+df <- runSNNOptTests(r, nRuns = 50)
 
 #save(df, file = "tests/regressionAutomAutoMPGAndCommunities2.Rdata")
 #load('data/RegData.Rdata')
