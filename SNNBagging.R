@@ -143,6 +143,7 @@ snn.bagging.fit.second.layer <- function(data.train.input, y, snn.sets, daisyObj
             probs <- as.data.frame(probs.corrected)
           }
           if (ncol(probs) < nlevels(y)) {
+            probs <- as.data.frame(probs)
             for (l in levels(y)) {
               if (all(colnames(probs) != l)) {
                 probs[l] <- 0
@@ -211,7 +212,7 @@ snn.bagging.fit.second.layer <- function(data.train.input, y, snn.sets, daisyObj
     }
     else if (!regularization && z$problemType == "multinomial") {
       if (trace) cat("[2nd layer] Fitting mulitnomial...\n")
-      z$model <- multinom(Target ~ ., data = bagging.ds, trace = FALSE, maxit = 500, abstol = 1e-6,...)
+      z$model <- multinom(Target ~ ., data = bagging.ds, trace = FALSE, maxit = 500, abstol = 1e-6,MaxNWts = 1e5,...)
     }
     else if (regularization && (z$problemType == 'binomial' || z$problemType == 'multinomial')) {
       if (trace) cat("[2nd layer] Fitting glmnet...\n")
