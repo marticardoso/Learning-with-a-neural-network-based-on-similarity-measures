@@ -5,9 +5,9 @@ library(randomForest)
 runEnsSNNTests <- function(datasets, nRuns = 10, classification = FALSE, onlyRandomForest = FALSE) {
   
   if (classification) {
-    ensMethods = c('A', 'A2', 'B')#, 'C', 'D', 'E')
+    ensMethods = c('A', 'A2', 'B','B2','C','D','E')#, 'C', 'D', 'E')
   } else {
-    ensMethods = c('A', 'B') #'C', 'D') #, 'E')
+    ensMethods = c('A', 'B','B2','C','D','E') #'C', 'D') #, 'E')
   }
 
   clust.methods <- c('PAM') #c('PAM', 'R')
@@ -35,7 +35,14 @@ runEnsSNNTests <- function(datasets, nRuns = 10, classification = FALSE, onlyRan
                 set.seed(seeds[i])
                 cat(i, '')
                 myTic()
-                r1 <- snn.bagging(ds$formula, subset = sampleByRun[, i], ds$dataset, bagging.method = ensMethod, simil.types = ds$simil.types, trace = FALSE, regularization = FALSE) #, clust.control = list(clust.method = clust.method))
+                
+                bagM <- ensMethod
+                reg <- FALSE
+                if(bagM == 'B2'){
+                  reg <- TRUE
+                  bagM <- 'B'
+                }
+                r1 <- snn.bagging(ds$formula, subset = sampleByRun[, i], ds$dataset, bagging.method = bagM, simil.types = ds$simil.types, trace = FALSE, regularization = reg) #, clust.control = list(clust.method = clust.method))
                 nrmseOrAcc[i] <- ifelse(!is.null(r1$nrmse), r1$nrmse, r1$testAccuracy)
                 times[i] <- myToc(print = FALSE)
 
