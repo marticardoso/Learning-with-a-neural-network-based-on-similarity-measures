@@ -510,8 +510,8 @@ LoadGlass <- function() {
 
   # For Gower
   simil.types <- list()
-
-  return(list(name = 'Glass', dataset = ds, simil.types = simil.types))
+  formula <- Target ~ .
+  return(list(name = 'Glass',  dataset = ds, formula = formula, simil.types = simil.types))
 }
 
 
