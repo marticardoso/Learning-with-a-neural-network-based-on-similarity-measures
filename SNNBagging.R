@@ -299,6 +299,7 @@ predict.snn.bagging = function(object, newdata, type = c("response", "prob"), tr
           probs <- as.data.frame(probs.corrected)
         }
         if (ncol(probs) < length(object$responseLevels)) {
+          probs <- as.data.frame(probs)
           for (l in object$responseLevels) {
             if (all(colnames(probs) != l)) probs[l] <- 0
             }
