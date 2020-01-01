@@ -94,6 +94,9 @@ runEnsSNNTests <- function(datasets, nRuns = 10, classification = FALSE, onlyRan
 
   fullResults$fullMethod <- paste(fullResults$clust.method, paste('Ens:', fullResults$ensMethod), sep = '\n')
   fullResults[fullResults$ensMethod == 'RandForest',]$fullMethod <- 'RandForest'
+
+  shortResult$fullMethod <- paste(shortResult$clust.method, paste('Ens:', shortResult$ensMethod), sep = '\n')
+  shortResult[shortResult$ensMethod == 'RandForest',]$fullMethod <- 'RandForest'
   z <- list()
   z$fullResults <- fullResults
   z$shortResults <- shortResult
