@@ -93,13 +93,18 @@ LoadWaveDataset <- function() {
   return(list(name = 'Wave', dataset = ds, formula = formula, simil.types = simil.types))
 }
 
-LoadRegressionProblems <- function() {
+LoadRegressionProblems <- function(large = TRUE) {
   d1 <- LoadAutomobileDS()
   d2 <- LoadAutoMPGDS()
   d3 <- LoadCommunitiesDataset()
   d4 <- LoadMvDataset()
   d5 <- LoadWaveDataset()
-  list(d1, d2, d3, d4, d5)
+  if (large) {
+    return(list(d1, d2, d3, d4, d5))
+  }
+  else {
+    return(list(d1, d2, d3))
+  }
 }
 
 
@@ -391,14 +396,20 @@ LoadCensus <- function() {
   return(list(name = 'Census', dataset = ds, formula = formula, simil.types = simil.types))
 }
 
-LoadBinClassProblems <- function() {
+LoadBinClassProblems <- function(large = TRUE) {
   d1 <- LoadHeartDataset()
   d2 <- LoadHorseColicV2()
   d3 <- LoadPimaDataset()
   d4 <- LoadMammographicDataset()
   d5 <- LoadMushroomDataset()
   d6 <- LoadCensus()
-  list(d1, d3, d2, d4, d5,d6)
+  if (large) {
+    return(list(d1, d3, d2, d4, d5, d6))
+  }
+  else {
+    return(list(d1, d3, d2, d4))
+  }
+  
 }
 
 ##################
@@ -597,13 +608,19 @@ LoadDiabetis <- function() {
   return(list(name = 'Diabetis', dataset = ds, formula = formula, simil.types = simil.types))
 }
 
-LoadMultiClassProblems <- function() {
+LoadMultiClassProblems <- function(large = TRUE) {
   d1 <- LoadAudiologyDs()
   d2 <- LoadGlass()
   d3 <- LoadHorseColicV1()
   d4 <- LoadAnnealing()
   d5 <- LoadContraceptiveDs()
   d6 <- LoadDiabetis()
-  list(d1, d2, d3, d4, d5, d6)
+  if (large) {
+    return(list(d1, d2, d3, d4, d5, d6))
+  }
+  else {
+    return(list(d1, d2, d3, d4, d5))
+  }
+  
 }
 
