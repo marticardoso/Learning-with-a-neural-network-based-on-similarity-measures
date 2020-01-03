@@ -92,8 +92,11 @@ runEnsSNNTests <- function(datasets, nRuns = 10, classification = FALSE, onlyRan
     save(shortResult, fullResults, file = "tests/TMPData.Rdata")
   }
 
-  fullResults$fullMethod <- paste(fullResults$clust.method, paste('Ens:', fullResults$ensMethod), sep = '\n')
+  fullResults$fullMethod <- paste(paste('Ens:', fullResults$ensMethod), sep = '\n')
   fullResults[fullResults$ensMethod == 'RandForest',]$fullMethod <- 'RandForest'
+
+  shortResult$fullMethod <- paste(paste('Ens:', shortResult$ensMethod), sep = '\n')
+  shortResult[shortResult$ensMethod == 'RandForest',]$fullMethod <- 'RandForest'
   z <- list()
   z$fullResults <- fullResults
   z$shortResults <- shortResult
