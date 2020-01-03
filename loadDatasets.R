@@ -97,9 +97,10 @@ LoadRegressionProblems <- function(large = TRUE) {
   d1 <- LoadAutomobileDS()
   d2 <- LoadAutoMPGDS()
   d3 <- LoadCommunitiesDataset()
-  d4 <- LoadMvDataset()
-  d5 <- LoadWaveDataset()
+  
   if (large) {
+    d4 <- LoadMvDataset()
+    d5 <- LoadWaveDataset()
     return(list(d1, d2, d3, d4, d5))
   }
   else {
@@ -401,9 +402,10 @@ LoadBinClassProblems <- function(large = TRUE) {
   d2 <- LoadHorseColicV2()
   d3 <- LoadPimaDataset()
   d4 <- LoadMammographicDataset()
-  d5 <- LoadMushroomDataset()
-  d6 <- LoadCensus()
+  
   if (large) {
+    d5 <- LoadMushroomDataset()
+    d6 <- LoadCensus()
     return(list(d1, d3, d2, d4, d5, d6))
   }
   else {
@@ -614,8 +616,8 @@ LoadMultiClassProblems <- function(large = TRUE) {
   d3 <- LoadHorseColicV1()
   d4 <- LoadAnnealing()
   d5 <- LoadContraceptiveDs()
-  d6 <- LoadDiabetis()
   if (large) {
+    d6 <- LoadDiabetis()
     return(list(d1, d2, d3, d4, d5, d6))
   }
   else {
