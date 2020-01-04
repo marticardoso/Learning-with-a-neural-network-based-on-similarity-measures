@@ -216,6 +216,12 @@ snn.bagging.fit.second.layer <- function(data.train.input, y, snn.sets, daisyObj
     }
     else if (regularization && (z$problemType == 'binomial' || z$problemType == 'multinomial')) {
       if (trace) cat("[2nd layer] Fitting glmnet...\n")
+      
+      for(l in levels(bagging.ds$Target)){ # GLMNET bug => duplicate row when less than 8 observations
+        if(8 >= sum(bagging.ds$Target == l)){
+          bagging.ds <- rbind(bagging.ds, bagging.ds[bagging.ds$Target == l,])  
+        }
+      }
       x <- as.matrix(bagging.ds[, - which(names(bagging.ds) %in% c("Target"))])
       y <- bagging.ds$Target
       family.type <- ifelse(z$problemType == 'binomial', 'binomial', 'multinomial')
