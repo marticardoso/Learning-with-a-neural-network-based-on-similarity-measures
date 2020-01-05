@@ -110,10 +110,10 @@ runRegressionSNNOptTests <- function(formula, ds, nRuns = 10) {
 }
 
 
-fixDatasetForTree <- function(ds) {
+fixDatasetForTree <- function(ds, perc = 0.95) {
 
   # Fix to many NA
-  ds[, 0.95 < (colSums(is.na(ds)) / nrow(ds))] <- NULL
+  ds[, perc < (colSums(is.na(ds)) / nrow(ds))] <- NULL
 
   #Fix more than 32 levels
   for (colId in 1:ncol(ds)) {
@@ -128,6 +128,8 @@ fixDatasetForTree <- function(ds) {
   }
   ds
 }
+
+
 
 fixDatasetForRF <- function(ds) {
 
