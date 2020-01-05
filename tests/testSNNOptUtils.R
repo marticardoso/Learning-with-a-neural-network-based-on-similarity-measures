@@ -143,7 +143,10 @@ runSNNOptTests <- function(datasets, nRuns = 10, classification = FALSE, onlyTre
   }
 
   fullResults$fullMethod <- paste(fullResults$clust.method, paste('OptP:', fullResults$method), fullResults$reg, sep = '\n')
-  fullResults[fullResults$method=='tree',]$fullMethod <- 'Tree'
+  fullResults[fullResults$method == 'tree',]$fullMethod <- 'Tree'
+
+  shortResult$fullMethod <- paste(shortResult$clust.method, paste('OptP:', shortResult$method), shortResult$reg, sep = '\n')
+  shortResult[shortResult$method == 'tree',]$fullMethod <- 'Tree'
   z <- list()
   z$fullResults <- fullResults
   z$shortResults <- shortResult
