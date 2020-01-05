@@ -1,23 +1,5 @@
 source("testUtils.R")
 source("SNN.R")
-fixDatasetForTree <- function(ds) {
-
-  # Fix to many NA
-  ds[, 0.95 < (colSums(is.na(ds)) / nrow(ds))] <- NULL
-
-  #Fix more than 32 levels
-  for (colId in 1:ncol(ds)) {
-    if (is.factor(ds[, colId]) && nlevels(ds[, colId]) > 32) {
-      lev <- rownames(sort(table(ds[, colId]), decreasing = TRUE))
-      newLev <- c(lev[1:31], 'Other')
-      f <- as.vector(ds[, colId])
-      for (j in 32:length(lev))
-        f[f == lev[j]] <- 'Other'
-      ds[, colId] <- factor(f, levels = newLev)
-    }
-  }
-  ds
-}
 
 
 runRegressionSNNOptTests <- function(formula, ds, nRuns = 10) {
@@ -118,7 +100,8 @@ runSNNOptTests <- function(datasets, nRuns = 10, classification = FALSE, onlyTre
     nrmseOrAcc <- numeric(nRunsDs)
     times <- numeric(nRunsDs)
     cat('  # Runs: ')
-    ds4Tree <- fixDatasetForTree(ds$dataset)
+    
+    ds4Tree <- fixDatasetForTree(ds$dataset, perc = ifelse(ds$name != 'Annealing', 0.95, 0.84))
     for (i in 1:nRunsDs) {
       cat(i, '')
       iniTime <- myTic()
