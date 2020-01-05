@@ -5,9 +5,9 @@ library(randomForest)
 runEnsSNNTests <- function(datasets, nRuns = 10, classification = FALSE, onlyRandomForest = FALSE) {
   
   if (classification) {
-    ensMethods = c('A', 'A2', 'B','B2','C','D','E')#, 'C', 'D', 'E')
+    ensMethods = c('A', 'A2', 'B','B2','C','E')#, 'C', 'D', 'E')
   } else {
-    ensMethods = c('A', 'B','B2','C','D','E') #'C', 'D') #, 'E')
+    ensMethods = c('A', 'B','B2','C','E') #'C', 'D') #, 'E')
   }
 
   clust.methods <- c('PAM') #c('PAM', 'R')

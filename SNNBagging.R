@@ -390,7 +390,7 @@ predict.snn.bagging = function(object, newdata, type = c("response", "prob"), tr
     else if (object$problemType == "multinomial") {
       # Transform list to 3D array
       probs <- lapply(snn.sets.pred, function(r) r$prob)
-      preds3D <- array(unlist(probs), dim = c(NROW(probs[[1]]), NCOL(probs[[1]]), length(probs)))
+      preds3D <- array(as.matrix(bagging.ds), dim = c(nrow(newdata), length(object$responseLevels), length(snn.sets.pred)))
       test.prob <- apply(preds3D, 2, rowMeans)
 
       if (length(object$responseLevels) == 2) {
