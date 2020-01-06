@@ -95,7 +95,7 @@ snn.bagging <- function(formula, data, subset = NULL, nSNN = 100,
       }
       z$testReal <- test.y
       tab <- table(Truth = test.y, Pred = z$testResponse)
-      z$testError <- 1 - sum(diag(tab)) / sum(tab)
+      z$testError <- 1 - sum(z$testResponse == test.y) / length(test.y)
       z$testAccuracy <- 100 * (1 - z$testError)
       z$testContingencyTable <- tab
     }
@@ -412,6 +412,11 @@ predict.snn.bagging = function(object, newdata, type = c("response", "prob"), tr
     if (object$problemType == "binomial") {
       test.prob <- predict(object$fit2layer$model, bagging.ds, type = "response")
       response <- test.prob >= 0.5
+      if (!is.null(object$responseLevels)) {
+        responseFactor <- rep(object$responseLevels[1], nrow(newdata))
+        responseFactor[response] <- object$responseLevels[2]
+        response <- responseFactor
+      }
     }
     else if (object$problemType == "multinomial") {
       if (any(class(object$fit2layer$model) == "multinom"))

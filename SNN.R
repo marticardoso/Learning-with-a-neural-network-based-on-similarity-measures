@@ -206,11 +206,21 @@ snn.createClassificationModel <- function(dataframe, regularization = FALSE, lam
   }
   else {
     if (trace) cat("[Classification] Creating ridge model...\n")
+
+    if (nlevels(dataframe$Target) > 2) {
+      for (l in levels(dataframe$Target)) {
+        if (sum(dataframe$Target == l) < 8) {
+          dataframe <- rbind(dataframe, dataframe[dataframe$Target == l,])
+        }
+      }
+    }
+
     x <- as.matrix(dataframe[, - which(names(dataframe) %in% c("Target"))])
     y <- dataframe$Target
     if (is.null(lambdas)) lambdas <- 2 ^ seq(-10, 10, 0.25)
     else lambdas <- c(lambdas)
-    if (length(lambdas) > 1) {      
+    if (length(lambdas) > 1) {
+      
       cv.result <- cv.glmnet(x, y, nfolds = 10, family = family.type, alpha = 0, standardize = FALSE)
       best.lambda <- cv.result$lambda.min[1]
     }
