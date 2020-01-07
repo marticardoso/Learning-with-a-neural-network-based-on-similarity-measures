@@ -15,109 +15,81 @@ source('tests/exp5MissingsSource.R')
 source('loadDatasets.R')
 source('benchmarkutils.R')
 
+exp5RegFolder <- 'Pictures/Experiments/Exp5/Reg/'
+exp5MultiFolder <- 'Pictures/Experiments/Exp5/Multi/'
+exp5BinFolder <- 'Pictures/Experiments/Exp5/Bin/'
+
 ################
 ## Regression ##
 ################
-set.seed(2)
-automobile <- LoadAutomobileDS()
-autoMPG <- LoadAutoMPGDS()
-communities <- LoadCommunitiesDataset()
-df <- runExperiment5(list(automobile), nRuns = 1, targetFirstPosition = FALSE)
 
-
-
-save(df, file = "tests/regressionAutomAutoMPGAndCommunities2.Rdata")
-load('data/RegData.Rdata')
-df <- list(fullResults = fullResults, shortResult = shortResult)
-fullResults$fullMethod <- paste(fullResults$clust.method, paste('P:', fullResults$method), ifelse(fullResults$reg,'Reg','-'), sep = '\n')
-fullResults[fullResults$method == 'tree',]$fullMethod <- 'Tree'
-ggplot(df$fullResults[df$fullResults$dataset == 'Automobile',], aes(x = method, y = saccOrNRMSE, fill = reg)) +
-  geom_boxplot() #+ geom_jitter(shape = 16, position = position_jitter(0.2))
-
-ggplot(df$fullResults[df$fullResults$dataset == 'Automobile',], aes(x = fullMethod, y = saccOrNRMSE)) +
-  geom_boxplot() + ggtitle('Automobile dataset') + ylab('NRMSE') + xlab(NULL)#+ geom_jitter(shape = 16, position = position_jitter(0.2))
-
-
-ggplot(df$fullResults[df$fullResults$dataset == 'AutoMPG',], aes(x = fullMethod, y = saccOrNRMSE)) +
-  geom_boxplot() + ggtitle('AutoMPG dataset') + ylab('NRMSE') + xlab(NULL) #+ geom_jitter(shape = 16, position = position_jitter(0.2))
-
-
-ggplot(df$fullResults[df$fullResults$dataset == 'Communities',], aes(x = fullMethod, y = saccOrNRMSE)) +
-  geom_boxplot() + ggtitle('Communities dataset') + ylab('NRMSE') + xlab(NULL) #+ geom_jitter(shape = 16, position = position_jitter(0.2))
-
-# Time
-df$shortResult$fullMethod <- paste(df$shortResult$clust.method, paste('P:', df$shortResult$method), ifelse(df$shortResult$reg, 'Reg', '-'), sep = '\n')
-df$shortResult[df$shortResult$method == 'tree',]$fullMethod <- 'Tree'
-
-for (ds in c('Automobile', 'AutoMPG', 'Communities')) {
-  plot <- ggplot(data = df$shortResult[df$shortResult$dataset == ds,], aes(x = fullMethod, y = timeMean, group = dataset)) +
-  geom_line() + geom_point() + ggtitle(paste('Mean execution time (',ds,' dataset)',sep = '')) +ylab('time (s)') + xlab('')
-  print(plot)
-  ggsave(paste('Pictures/ExpSNN/Auto/Exp1_Time2_',ds,'.png',sep = ''))
+changeFirstByLastCol <- function(ds) {
+  ds$dataset = ds$dataset[, c(colnames(ds$dataset)[2:length(colnames(ds$dataset))], colnames(ds$dataset)[1])]
+  ds
 }
 
+set.seed(2)
+hc <- LoadRegressionProblems(large = FALSE)
+hc[[2]] <- changeFirstByLastCol(hc[[2]])
+df <- runExperiment5(hc, nRuns = 10, targetFirstPosition = FALSE)
+save(df, file = "tests/Exp5/Exp5RegSmall.Rdata")
+#load("tests/Exp5/Exp5RegSmall.Rdata")
+ggplot(data = df$shortResult, aes(x = propMissings * 100, y = accMean, group = dataset, color = dataset)) +
+  geom_line() + geom_point() + ylab('NRMSE') + xlab('Percentage of missing values (%)') + ggtitle('Regression problems') + xlim(0,100)
+ggsave(paste(exp5RegFolder, 'Exp5_NRMSE_Regression.png', sep = ''), width = 5, height = 3.5)
 
-ggplot(data = df$shortResult, aes(x = fullMethod, y = accMean, group = dataset, color = dataset)) +
-  geom_line() + geom_point() + ylab('NRMSE') + ylab('')
+ggplot(data = df$shortResult, aes(x = propMissings * 100, y = timeMean, group = dataset, color = dataset)) +
+  geom_line() + geom_point() + ylab('Execution time (s)') + xlab('Percentage of missing values (%)') + ggtitle('Regression problems') + xlim(0, 100)
+ggsave(paste(exp5RegFolder, 'Exp5_Time_Regression.png', sep = ''), width = 5, height = 3.5)
 
 
-
-ggplot(df$fullResults[df$fullResults$dataset == 'AutoMPG',], aes(x = method, y = saccOrNRMSE, fill = reg)) + geom_boxplot()
-
-ggplot(df$fullResults[df$fullResults$dataset == 'Communities',], aes(x = method, y = saccOrNRMSE, fill = reg)) + geom_boxplot()
-
-df$shortResults$fullMethod <- paste(df$shortResults$dataset, df$shortResults$reg)
-ggplot(data = df$shortResults, aes(x = method, y = accMean, group = fullMethod, color = fullMethod)) +
-  #geom_errorbar(aes(ymin = mean - sd, ymax = mean + sd), width = .1) +
-  geom_line() +
-  geom_point()
-
-ggplot(data = df$shortResults, aes(x = method, y = timeMean, group = dataset, color = dataset)) +
-  #geom_errorbar(aes(ymin = timeMean - timeSd, ymax = timeMean + timeSd), width = .1) +
-  geom_line() +
-  geom_point()
 
 #############
 ## Classification binomial ##
 #############
 
-hc <- LoadBinClassProblems()
-hc[[5]] <- NULL
-hc[[6]] <- NULL
-df <- runExperiment5(hc, nRuns = 10, targetFirstPosition = FALSE)
+hc <- LoadBinClassProblems(large = FALSE)
+df <- runExperiment5(hc, nRuns = 10, classification = TRUE, targetFirstPosition = FALSE)
+#save(df, file = "tests/Exp5/Exp5BinClassSmall.Rdata")
+#load("tests/Exp5/Exp5BinClassSmall.Rdata")
+ggplot(data = df$shortResult, aes(x = propMissings * 100, y = accMean, group = dataset, color = dataset)) +
+  geom_line() + geom_point() + ylab('Accuracy (%)') + xlab('Percentage of missing values (%)') + ggtitle('Binomial classification problems') + xlim(0, 100)
+ggsave(paste(exp5BinFolder, 'Exp5_Acc_BinClass.png', sep = ''), width = 5, height = 3.5)
 
-ggplot(data = df$shortResult, aes(x = propMissings, y = accMean, group = dataset, color = dataset)) +
-  geom_line() + geom_point() + ylab('Accuracy (%)') + xlab('Proportion of missing values') + ylim(NA, 100)
+ggplot(data = df$shortResult, aes(x = propMissings * 100, y = timeMean, group = dataset, color = dataset)) +
+  geom_line() + geom_point() + ylab('Execution time (s)') + xlab('Percentage of missing values (%)') + ggtitle('Binomial classification problems') + xlim(0, 100)
+ggsave(paste(exp5BinFolder, 'Exp5_Time_BinClass.png', sep = ''), width = 5, height = 3.5)
+plot(df$shortResults$exp5BinFolder, df$shortResults$accMean, type = 'l')
 
 
-plot(df$shortResults$propMissings, df$shortResults$accMean, type = 'l')
+#############
+## Multinomial Classification ##
+#############
+
+hc <- LoadMultiClassProblems(large = FALSE)
+df <- runExperiment5(hc, nRuns = 10, classification = TRUE, targetFirstPosition = FALSE)
+save(df, file = "tests/Exp5/Exp5MultiClassSmall.Rdata")
+#load("tests/Exp5/Exp5MultiClassSmall.Rdata")
+
+ggplot(data = df$shortResult, aes(x = propMissings * 100, y = accMean, group = dataset, color = dataset)) +
+  geom_line() + geom_point() + ylab('Accuracy (%)') + xlab('Percentage of missing values (%)') + ggtitle('Multinomial classification problems') + xlim(0, 100)
+ggsave(paste(exp5MultiFolder, 'Exp5_Acc_MultiClass.png', sep = ''), width = 5, height = 3.5)
+
+ggplot(data = df$shortResult, aes(x = propMissings * 100, y = timeMean, group = dataset, color = dataset)) +
+  geom_line() + geom_point() + ylab('Execution time (s)') + xlab('Percentage of missing values (%)') + ggtitle('Multinomial classification problems') + xlim(0, 100)
+ggsave(paste(exp5MultiFolder, 'Exp5_Time_MultiClass.png', sep = ''), width = 5, height = 3.5)
 
 
-heart <- LoadHeartDataset()
-mammographic <- LoadMammographicDataset()
-mushroom <- LoadMushroomDataset()
 
-df <- runEnsSNNTests(list(mushroom, heart), nRuns = 5, classification = TRUE, onlyRandomForest = FALSE)
-soundEnd()
+# Export to latex
+tmp <- df$shortResults
+tmp$Prop <- paste(tmp$propMissings * 100, '%', sep = '')
+tmp$propMissings <- NULL
+tmp$ensMethod <- NULL
+tmp$clust.method <- NULL
 
-ggplot(df$fullResults[df$fullResults$dataset == 'Heart',], aes(x = fullMethod, y = saccOrNRMSE)) +
-  geom_boxplot() #+ geom_jitter(shape = 16, position = position_jitter(0.2))
-
-ggplot(df$fullResults[df$fullResults$dataset == 'Mammographic',], aes(x = fullMethod, y = saccOrNRMSE)) +
-  geom_boxplot() #+ geom_jitter(shape = 16, position = position_jitter(0.2))
-
-ggplot(data = df, aes(x = method, y = mean, group = dataset, color = dataset)) +
-  geom_errorbar(aes(ymin = mean - sd, ymax = mean + sd), width = .1) +
-  geom_line() +
-  geom_point()
-
-ggplot(data = df, aes(x = method, y = timeMean, group = dataset, color = dataset)) +
-  geom_errorbar(aes(ymin = timeMean - timeSd, ymax = timeMean + timeSd), width = .1) +
-  geom_line() +
-  geom_point()
-
-xtable(df$shortResults)
-
+tmp <- tmp[c("dataset", "Prop", "accMean", "accSd", "timeMean", "timeSd")]
+print(xtable(tmp, digits = 4), include.rownames = FALSE)
 
 
 
