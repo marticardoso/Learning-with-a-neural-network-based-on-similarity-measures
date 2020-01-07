@@ -36,7 +36,7 @@ runExperiment5 <- function(datasets, nRuns = 1, classification = FALSE, targetFi
     set.seed(1998)
     sampleByRun <- sapply(1:nRuns, function(i) sampleTwoThirds(ds$dataset))
     seeds <- sapply(1:nRuns, function(i) round(runif(1) * 10000000))
-    for (propMissings in seq(0, 1, 0.1)) {
+    for (propMissings in seq(0, 0.999999, 0.1)) {
       datasetWithMissings <- addMissingValues(ds$dataset, missingRatio = propMissings, targetFirstPosition = targetFirstPosition)
       gDatasetMissing <<- datasetWithMissings
       for (ensMethod in ensMethods) {
