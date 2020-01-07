@@ -48,6 +48,10 @@ runEnsSNNTests <- function(datasets, nRuns = 10, classification = FALSE, onlyRan
 
                 newRow <- data.frame(dataset = ds$name, ensMethod = ensMethod, clust.method = clust.method, run=i, saccOrNRMSE = nrmseOrAcc[i], time = times[i])
                 fullResults <- rbind(fullResults, newRow)
+                
+                r1 <- NULL
+                gc()
+                save(shortResult, fullResults, file = "tests/TMPData.Rdata")
               }
               cat('\n')
 
