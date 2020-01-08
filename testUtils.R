@@ -138,6 +138,17 @@ fixDatasetForRF <- function(ds) {
       ds[, colId] <- factor(ds[, colId])
     }
   }
+  
+  for (colId in 1:ncol(ds)) {
+    if (is.factor(ds[, colId]) && nlevels(ds[, colId]) > 52) {
+      lev <- rownames(sort(table(ds[, colId]), decreasing = TRUE))
+      newLev <- c(lev[1:52], 'Other')
+      f <- as.vector(ds[, colId])
+      for (j in 53:length(lev))
+        f[f == lev[j]] <- 'Other'
+      ds[, colId] <- factor(f, levels = newLev)
+    }
+  }
 
   ds <- na.roughfix(ds)
   ds
