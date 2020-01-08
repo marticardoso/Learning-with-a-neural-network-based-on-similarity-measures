@@ -74,25 +74,29 @@ runSNNOptTests <- function(datasets, nRuns = 10, classification = FALSE, onlyTre
                 set.seed(seeds[i])
                 cat(i, '')
                 myTic()
-                r1 <- snn(ds$formula, subset = sampleByRun[, i], ds$dataset, simil.types = ds$simil.types, p.control = pOptMethods[[j]], trace = FALSE, regularization = reg, clust.control = list(clust.method = clust.method))
+                r1 <- snn(ds$formula, subset = sampleByRun[, i], ds$dataset, simil.types = ds$simil.types, p.control = pOptMethods[[j]], trace = TRUE, regularization = reg, clust.control = list(clust.method = clust.method))
                 nrmseOrAcc[i] <- ifelse(!is.null(r1$nrmse), r1$nrmse, r1$testAccuracy)
                 times[i] <- myToc(print = FALSE)
 
                 newRow <- data.frame(dataset = ds$name, method = pNames[j], reg = reg, clust.method = clust.method, run = i, saccOrNRMSE = nrmseOrAcc[i], time = times[i], p = r1$p, nProt = nrow(r1$prototypes))
                 fullResults <- rbind(fullResults, newRow)
+
+                r1 <- NULL
+                gc()
+                save(shortResult, fullResults, file = "tests/TMPData2.Rdata")
               }
               cat('\n')
 
               newRow <- data.frame(dataset = ds$name, method = pNames[j], reg = reg, clust.method = clust.method, accMean = mean(nrmseOrAcc), accSd = sd(nrmseOrAcc), timeMean = mean(times), timeSd = sd(times))
               shortResult <- rbind(shortResult, newRow)
 
-              save(shortResult, fullResults, file = "tests/TMPData.Rdata")
+              save(shortResult, fullResults, file = "tests/TMPData2.Rdata")
             }
           }
         }
       }
     }
-    save(shortResult, fullResults, file = "tests/TMPData.Rdata")
+    save(shortResult, fullResults, file = "tests/TMPData2.Rdata")
 
     #Decision Tree
     cat('Executing method: decision tree \n')
@@ -122,7 +126,7 @@ runSNNOptTests <- function(datasets, nRuns = 10, classification = FALSE, onlyTre
     newRow <- data.frame(dataset = ds$name, method = 'tree', reg = FALSE, clust.method = '', accMean = mean(nrmseOrAcc), accSd = sd(nrmseOrAcc), timeMean = mean(times), timeSd = sd(times))
     shortResult <- rbind(shortResult, newRow)
 
-    save(shortResult, fullResults, file = "tests/TMPData.Rdata")
+    save(shortResult, fullResults, file = "tests/TMPData2.Rdata")
   }
 
   fullResults$fullMethod <- paste(fullResults$clust.method, paste('OptP:', fullResults$method), fullResults$reg, sep = '\n')
