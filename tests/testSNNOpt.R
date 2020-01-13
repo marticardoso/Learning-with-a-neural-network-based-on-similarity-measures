@@ -52,7 +52,7 @@ for (ds in dsNames) {
 # Time
 for (ds in dsNames) {
   plot <- ggplot(data = df$fullResults[df$fullResults$dataset == ds,], aes(x = fullMethod, y = time)) +
-  geom_boxplot() + ggtitle(paste('Execution time (', ds, ' dataset)', sep = '')) + ylab('Execution time (s)') + xlab('')
+  geom_boxplot() + ggtitle(paste('Execution time (', ds, ' dataset)', sep = '')) + ylab('Execution time (s)') + xlab(NULL)
   print(plot)
   ggsave(paste(exp1RegFolder, 'Exp1_Time_', ds, '.png', sep = ''), width = 7, height = 4.5)
 }
@@ -95,7 +95,7 @@ for (ds in dsNames) {
 # Time
 for (ds in dsNames) {
   plot <- ggplot(data = df$fullResults[df$fullResults$dataset == ds,], aes(x = fullMethod, y = time)) +
-  geom_boxplot() + ggtitle(paste('Execution time (', ds, ' dataset)', sep = '')) + ylab('Execution time (s)') + xlab('')
+  geom_boxplot() + ggtitle(paste('Execution time (', ds, ' dataset)', sep = '')) + ylab('Execution time (s)') + xlab(NULL)
   print(plot)
   ggsave(paste(exp1BinFolder, 'Exp1_Time_', ds, '.png', sep = ''), width=7, height = 4.5)
 }

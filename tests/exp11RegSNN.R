@@ -44,7 +44,7 @@ ggsave(paste(exp11RegFolder, 'Exp11_Time_Regression.png', sep = ''), width = 5, 
 #############
 
 hc <- LoadBinClassProblems(large = FALSE)
-df <- runExperiment11(hc, nRuns = 10, classification = TRUE)
+df <- runExperiment11(hc, nRuns = 20, classification = TRUE)
 save(df, file = "tests/Exp11/Exp11BinClassSmall.Rdata")
 #load("tests/Exp11/Exp11BinClassSmall.Rdata")
 ggplot(data = df$shortResult, aes(x = isRegularization, y = accMean, group = dataset, color = dataset)) +

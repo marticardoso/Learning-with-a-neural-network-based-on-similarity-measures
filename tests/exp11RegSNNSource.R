@@ -9,7 +9,7 @@ runExperiment11 <- function(datasets, nRuns = 1, classification = FALSE) {
   for (ds in datasets) {
 
     cat('Dataset: ', ds$name, '\n')
-    set.seed(1998)
+    set.seed(11911)
     sampleByRun <- sapply(1:nRuns, function(i) sampleTwoThirds(ds$dataset))
     seeds <- sapply(1:nRuns, function(i) round(runif(1) * 10000000))
     for (reg in c(FALSE,TRUE)) {

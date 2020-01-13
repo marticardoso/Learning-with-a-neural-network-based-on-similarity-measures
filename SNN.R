@@ -209,12 +209,13 @@ snn.createClassificationModel <- function(dataframe, regularization = FALSE, lam
 
     if (nlevels(dataframe$Target) > 2) {
       for (l in levels(dataframe$Target)) {
-        if (sum(dataframe$Target == l) < 8) {
-          dataframe <- rbind(dataframe, dataframe[dataframe$Target == l,])
+        if (sum(dataframe$Target == l) > 0) {
+          while (sum(dataframe$Target == l) < 8) {
+            dataframe <- rbind(dataframe, dataframe[dataframe$Target == l,])
+          }
         }
       }
     }
-
     x <- as.matrix(dataframe[, - which(names(dataframe) %in% c("Target"))])
     y <- dataframe$Target
     if (is.null(lambdas)) lambdas <- 2 ^ seq(-10, 10, 0.25)
@@ -434,8 +435,13 @@ predict.snn = function(object, newdata, type = c("response", "prob", "simils"), 
   else if (object$outputType == "factor") {
     if (any(class(object$model) == "multinom"))
       prob <- predict(object$model, test.x, type = "probs")
-    else
+    else {
       prob <- predict(object$model, test.x, type = "response")
+
+      if (is.array(prob) && 3 == length(dim(prob))) {
+        prob <- prob[,,1]
+      }
+    }
     if (length(object$outputLevels) == 2) {
       response <- rep(object$outputLevels[1], nrow(x))
       response[prob >= 0.5] <- object$outputLevels[2]

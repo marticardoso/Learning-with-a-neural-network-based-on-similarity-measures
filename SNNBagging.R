@@ -11,6 +11,7 @@ snn.bagging <- function(formula, data, subset = NULL, nSNN = 100,
   snnbag.expectedRows = 0.5,
   snnbag.rowMethod = 'P',
   bagging.method = 'B',
+clust.control = NULL,
   ..., trace = TRUE) {
   if (!is.null(subset) && length(subset) < nrow(data)) data.train <- data[subset,]
   else data.train <- data
@@ -34,22 +35,25 @@ snn.bagging <- function(formula, data, subset = NULL, nSNN = 100,
 
   if (trace) cat('Computing Models \n')
   
-  if (snnbag.rowMethod == "U") {
-    howManyRows <- runif(nSNN, 1, nrow(data.train) * snnbag.expectedRows)
-  } else if (snnbag.rowMethod == "B") {
+  if (snnbag.rowMethod == "U" || snnbag.rowMethod == "Uniform") {
+    howManyRows <- runif(nSNN, 1, nrow(data.train) * snnbag.expectedRows*2)
+  } else if (snnbag.rowMethod == "B" || snnbag.rowMethod == "Binomial") {
     howManyRows <- rbinom(nSNN, nrow(data.train), snnbag.expectedRows)
-  } else if (snnbag.rowMethod == "P") {
+  } else if (snnbag.rowMethod == "P" || snnbag.rowMethod == "Poisson") {
     howManyRows <- rpois(nSNN, nrow(data.train) * snnbag.expectedRows)
-  } else if (snnbag.rowMethod == "C") {
-    howManyRows <- nrow(data.train) * snnbag.expectedRows
+  } else if (snnbag.rowMethod == "C" || snnbag.rowMethod == "Constant") {
+    howManyRows <- rep(nrow(data.train) * snnbag.expectedRows, nSNN)
+    
   } else stop('Wrong paramater')
   howManyRows <- sapply(howManyRows, function(r) round(min(4000, nrow(data.train), max(50, r))))
-
   if (bagging.method == "E") {
     rows <- sample(1:nrow(data.train))[1:min(4000, nrow(data.train))]
     daisyObject <- daisy2_noComputation(data.train.inputs, metric = "gower", type = simil.types)
     clust.data <- daisy2.newObservations(data.train.inputs[rows,], daisyObject)
     clustering <- pam(clust.data, k = nSNN, metric = "euclidean", stand = FALSE, diss = TRUE, keep.diss = FALSE, keep.data = FALSE)$clustering
+  }
+  if (is.null(clust.control)) {
+    clust.control = list(clust.method = "R", nclust.method = "U")
   }
   snn.sets <- lapply(1:nSNN, function(snnId) {
     #print(snnId)
@@ -62,7 +66,7 @@ snn.bagging <- function(formula, data, subset = NULL, nSNN = 100,
     if (trace) cat('Model ', snnId, 'of', nSNN, '(', length(bag.Ids), ' observations) \n')
 
     snn(formula, data.train[bag.Ids,], daisyObj = daisyObject, regularization = snn.reg, simil.types = simil.types, ...,
-        trace = FALSE, clust.control = list(clust.method = "R", nclust.method = "U"))
+        trace = FALSE, clust.control = clust.control)
   })
 
   fit2layer <- snn.bagging.fit.second.layer(data.train.inputs, y, snn.sets, daisyObject = daisyObject, regularization = regularization, bagging.method = bagging.method, ..., trace = trace)
@@ -366,8 +370,27 @@ predict.snn.bagging = function(object, newdata, type = c("response", "prob"), tr
     else if (object$problemType == "multinomial") {
       # Transform list to 3D array
       snns.preds <- matrix(0, nrow(newdata), length(snn.sets.pred))
+      
       for (i in (1:length(snn.sets.pred))) {
-        snns.preds[, i] <- apply(snn.sets.pred[[i]]$prob, 1, function(p) object$responseLevels[which.max(p)[1]])
+        probs <- snn.sets.pred[[i]]$prob
+        if (!is.null(object$responseLevels) && length(object$responseLevels) > 2) {
+          if (!is.matrix(probs)) {
+            probs.corrected <- cbind(probs)
+            if (length(object$snn.sets[[i]]$outputLevels) == 2) {
+              probs.corrected <- cbind(1 - probs.corrected, probs.corrected)
+            }
+            colnames(probs.corrected) <- object$snn.sets[[i]]$outputLevels
+            probs <- as.data.frame(probs.corrected)
+          }
+          if (ncol(probs) < length(object$responseLevels)) {
+            probs <- as.data.frame(probs)
+            for (l in object$responseLevels) {
+              if (all(colnames(probs) != l)) probs[l] <- 0
+              }
+            probs <- probs[, object$responseLevels] # Resort by level id
+          }
+        }
+        snns.preds[, i] <- apply(probs, 1, function(p) object$responseLevels[which.max(p)[1]])
       }
       response <- apply(snns.preds, 1, function(x) names(sort(table(x), decreasing = TRUE)[1]))
       response <- factor(response, levels = object$responseLevels)
