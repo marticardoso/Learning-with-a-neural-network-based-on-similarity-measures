@@ -1,4 +1,4 @@
-#library(microbenchmark)
+# Some function used to benchmark  (time and performance) the implementation 
 library(beepr)
 #Get current milisecond
 milisec <- function(ini=0) {

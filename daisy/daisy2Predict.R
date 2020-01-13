@@ -1,9 +1,8 @@
 dyn.load("daisy/daisy2pred.dll")
-#dyn.unload("daisy/daisy2pred.dll")
 dissiCl <- c("dissimilarity", "dist")
 
 
-# Only for gower
+# Daisy function for new observations (compute dissimilarities between x and newdata)
 daisy2.newObservations <- function(x, daisyObj, newdata = NULL)
 {
   ## check type of input matrix

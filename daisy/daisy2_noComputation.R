@@ -1,3 +1,4 @@
+# Function that computes the pre-computation of the dissimilarity matrix, but without computing these dissimilarities
 daisy2_noComputation <- function(x, metric = c("euclidean", "manhattan", "gower"),
                             stand = FALSE, type = list(), weights = rep.int(1, p), fixUnbalancedDiss = TRUE,
                             warnBin = warnType, warnAsym = warnType, warnConst = warnType, warnType = TRUE)

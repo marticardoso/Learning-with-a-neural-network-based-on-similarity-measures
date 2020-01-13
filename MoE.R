@@ -1,7 +1,9 @@
+# Source code of the Mixture of Expert 
 library(dplyr)
 library(magrittr)
 library(ggplot2)
 
+# Function that predicts the output of the Ensemble of SNNs given an model (MoE)
 MoE.predict <- function(object, x, snnX) {
   if (is.data.frame(x)) x <- data.matrix(x)
   if (is.data.frame(snnX)) snnX <- data.matrix(snnX)
@@ -33,6 +35,7 @@ MoE.predict <- function(object, x, snnX) {
   z
 }
 
+# Functio that creates the MoE model (optimize)
 MoE.optimize <- function(x, snnX, t, type, bIni = NULL, predByM = NULL) {
   # predByM: a list containing the features of x that can be used in each SNN
   m <- ncol(snnX)
@@ -110,6 +113,8 @@ MoE.optimize <- function(x, snnX, t, type, bIni = NULL, predByM = NULL) {
   class(z) <- "MoE"
   z
 }
+
+## Below are the Error function and the derivatives used in the MoE
 
 ##
 # Regression 

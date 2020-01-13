@@ -1,6 +1,6 @@
 library(e1071)
 library(MASS)
-
+## File with functions related to the activation function (fp) and the optimization of p
 
 a <- function(p) -1/4+sqrt((1/2)^4 + p)
 fp <- function(x,p){
@@ -33,6 +33,7 @@ apply.dfp <- function(X, p) {
   return(dfp_X)
 }
 
+# Error function
 E.func <- function(p, simils, t, w, reg = FALSE, lambda = 0) {
   if (is.logical(t) || (is.factor(t) && nlevels(t) == 2))
     return(E.binomial(p, simils, t, w, reg, lambda))
@@ -47,11 +48,12 @@ E.func <- function(p, simils, t, w, reg = FALSE, lambda = 0) {
     stop(gettextf("E func ('%s') is not supported.", class(t)))
   }
 
-
+# Error function (for a model)
 E.func.from_model <- function(p, simils, t, model) {
   return(E.func(p, simils, t, extractCoefficients(model), isRegularization(model), model$lambda))
 }
 
+# Get accuracy/NRMSE of a model
 accuracyOrNRMSE <- function(p, simils, t, model) {
   if (is.logical(t) || (is.factor(t) && nlevels(t) == 2))
     return(accuracy.binomial(p, simils, t, model))
@@ -67,7 +69,7 @@ accuracyOrNRMSE <- function(p, simils, t, model) {
   }
 
 ################
-# Regression E #
+# Regression Error function (E) #
 ################
 
 # E function (error) for regression= t - snn(x)
@@ -91,7 +93,7 @@ NRMSE.regression <- function(p, simils, t, model) {
 }
 
 ##############
-# Binomial E #
+# Binomial Error function (E) #
 ##############
 
 
@@ -122,7 +124,7 @@ accuracy.binomial <- function(p, simils, t, model) {
 }
 
 ##############
-# Multinom E #
+# Multinom Error function (E) #
 ##############
 
 E.multinomial <- function(p, simils, t, w, reg = FALSE, lambda = 0) {
@@ -139,13 +141,6 @@ E.multinomial <- function(p, simils, t, w, reg = FALSE, lambda = 0) {
   if (any(conflictRules)) {
     nnetRes[conflictRules,] <- t(apply(X[conflictRules,, drop = FALSE], 1, function(row) as.numeric(row == max(row)) / sum(row == max(row))))
   }
-
-  #nnetRes <- t(apply(X, 1, function(row) { # Optimized in the line above
-  #  res <- exp(row)/sum(exp(row))
-  # If NaN, take the maximum one. NaN caused by precision
-  #  if(any(is.nan(res))) res <- as.numeric(row==max(row))/sum(row==max(row))
-  #  return(res)
-  #}))
 
   z <- class.ind(t) * ln(nnetRes + 1e-50)
   z <- -sum(z) / length(t)
@@ -177,20 +172,8 @@ accuracy.multinomial <- function(p, simils, t, model) {
   return(sum(diag(tab)) / sum(tab))
 }
 
-# Step 1 of method 1:
-# Create a model given a p value (optimize w given a p value)
-optimize_p_create_model_given_p <- function(simils, y, p, ..., trace=TRUE){
-  learn.data <- data.frame(apply.fp(simils, p))
-  learn.data$Target <- y
-  if(is.factor(y) || is.logical(y)){
-    model <- snn.createClassificationModel(learn.data, trace=FALSE,...)
-  }
-  else if(is.numeric(y)){
-    model <- snn.createRegressionModel(learn.data, trace=FALSE, ...)
-  }
-  return(model)
-}
 
+# Extract coefficients of the model
 extractCoefficients <- function(model){
   w <- coef(model)  #Extract w
   if (any(class(model) == "glmnet")) {
@@ -214,25 +197,9 @@ isRegularization <- function(model){
   return(FALSE)
 }
 
-# Try a range of p, and return the one with highest value
-optimize_p_test_range_of_values <- function(simils, t, ps = NULL){
-  if(is.null(ps)) ps = seq(0.01,2,0.01)
-  
-  E.res <- sapply(ps, function(p) {
-    model <- optimize_p_create_model_given_p(simils,t,p)
-    hatDiag <- influence(model)$hat
-    E.val <- E.func.from_model(p, simils,t, model)*length(hatDiag)/sum((1-hatDiag)^2)
-    return(E.val)
-  })
-  
-  
-  z <- list()
-  z$bestP <- ps[which.min(E.res)[1]]
-  z$ps <- ps
-  z$ps.E <- E.res
-  z
-}
-
+######################
+# VALUE OF P: BY GCV #
+######################
 optimize_p_GCV <- function(simils, y, control = NULL,regularization=FALSE,..., trace=TRUE){
   
   if(!is.numeric(y)) stop("Only regression model supported")
@@ -280,7 +247,9 @@ optimize_p_GCV <- function(simils, y, control = NULL,regularization=FALSE,..., t
   z
 }
 
-
+######################
+# VALUE OF P: K-foldCV #
+######################
 # Optimize p using k fold cross validation method
 optimize_p_kFoldCV <- function(simils, t, regularization = FALSE, control = NULL,..., trace=TRUE){
   # Extract control info
@@ -339,86 +308,70 @@ optimize_p_kFoldCV <- function(simils, t, regularization = FALSE, control = NULL
   z
 }
 
-
-# Method that approch the best p
-# Inputs: 
-#   - dissim <- dissimalirity matrix
-#   - pam.res <- result of pam
-optimize_p_method3 <- function(dissim, pam.res, type="avg", ..., trace=TRUE){
-
-  # Approach 1:
-  #  Similar to Calinski-Harabasz index
-  N <- sum(pam.res$clusinfo[,"size"])
-  K <- length(pam.res$id.med)
-  sW <- sum(pam.res$clusinfo[,"av_diss"]*pam.res$clusinfo[,"size"])/(N-K) # Mean diss to the cluster medoid
-  sB <- sum(dissim[pam.res$id.med,pam.res$id.med])/(K-1)^2 # Mean diss between medoids
-  coef1 <- 2*sW/sB
-  if(type=="m1") return(coef1)
-  
-  # Approach 2
-  # Mean of observation Silhouette coefficients
-  avg.sil <- pam.res$silinfo$avg.width
-  coef2 <- max(1 - avg.sil, 1e-3) # cannot be 0
-  if(type=="m2") return(coef2)
-  
-  # Approach 3
-  # Mean of mean silhuette coefficients by cluster
-  # sil = a(i)-b(i)/max(a(i),b(i)) <- a(i)=mean distance all points, b(i) min mean distance to other cluster
-  # sil [-1,1]
-  avg.sil2 <- mean(pam.res$silinfo$clus.avg.widths)
-  coef3 <- max(1 - avg.sil2, 1e-3) # cannot be 0
-  if(type=="m3") return(coef3)
-  
-  
-  # Method 4
-  # (within-between) clusters coefficient (between all observations)
-  method4 <- function(clust.id){
-    ids <- which(pam.res$clustering==clust.id)
-    withincluster <- sum(dissim[ids,ids])/(length(ids)-1)^2
-    betweenclust <- mean(dissim[ids,-ids])
-    r <- (betweenclust-withincluster) /max(betweenclust,withincluster)
-    return(r)
+# Create a model given a p value (optimize w given a p value)
+optimize_p_create_model_given_p <- function(simils, y, p, ..., trace = TRUE) {
+  learn.data <- data.frame(apply.fp(simils, p))
+  learn.data$Target <- y
+  if (is.factor(y) || is.logical(y)) {
+    model <- snn.createClassificationModel(learn.data, trace = FALSE, ...)
   }
-  coef4 <- 1 - mean(sapply(1:length(pam.res$id.med), method4))
-  if(type=="m4") return(coef4)
-  
-  # Method 5
-  # within-between clusters coefficient (between observations and medoids)
-  method5 <- function(clust.id){
-    ids <- which(pam.res$clustering==clust.id)
-    withincluster <- pam.res$clusinfo[clust.id,"av_diss"]
-    betweenclust <- mean(dissim[ids,pam.res$id.med[-clust.id]])
-    r <- (betweenclust-withincluster) /max(betweenclust,withincluster)
-    return(r)
+  else if (is.numeric(y)) {
+    model <- snn.createRegressionModel(learn.data, trace = FALSE, ...)
   }
-  coef5 <- 1 - mean(sapply(1:length(pam.res$id.med), method5))
-  if(type=="m5") return(coef4)
-  
-  # Method 6
-   # avg clust diameter /diameter (not valid)
-  #diam <- max(dissim)
-  #coef6 <- mean(pam.res$clusinfo[,"diameter"])/diam
-  
-  # Method 7
-  # avg separation/diameter (not valid)
-  #diam <- max(dissim)
-  #coef7 <- 1-mean(pam.res$clusinfo[,"separation"])/diam
-  
-  # Method 8
-  # avg separation/mean distance (not valid)
-  #coef8 <- mean(pam.res$clusinfo[,"separation"]/mean(pam.res$clusinfo[,"max_diss"]))
-  
-  # Result
-  # size
-  # max_diss = max distance between obs i medoid
-  # av_diss = av distance between obs and medoid
-  # diameter = max distance between two obs
+  return(model)
+}
+
+######################################
+# VALUE OF P: OPTIMIZATION PROCEDURE!#
+######################################
+# Optimization procedure to set the value of p
+optimize_p_oneOpt <- function(simils, t, pInitial = 0.1, ..., trace = TRUE) {
+
+  if (is.numeric(t)) {
+    E <- E.regression
+    dE <- opt2.dE.regression
+    initialW <- numeric(ncol(simils) + 1)
+  }
+  else if (is.logical(t) || (is.factor(t) && nlevels(t) == 2)) {
+    E <- E.binomial
+    dE <- opt2.dE.binomial
+    initialW <- numeric(ncol(simils) + 1)
+  }
+  else if (is.factor(t) && nlevels(t) > 2) {
+    E <- E.multinomial
+    dE <- opt2.dE.multinomial
+    initialW <- matrix(1, ncol(simils) + 1, nlevels(t) - 1)
+  }
+  else stop('Not implemented (fp_utils)')
+  #Function to optimize
+  func <- function(args) {
+    n <- length(args)
+    p <- args[n]
+    if (is.matrix(initialW)) w <- matrix(args[1:n - 1], ncol = ncol(initialW))
+    else w <- args[1:n - 1]
+    E(p = p, simils = simils, t = t, w = w, reg = FALSE)
+  }
+
+  #Gradient function
+  grad <- function(args) {
+    n <- length(args)
+    p <- args[n]
+    if (is.matrix(initialW)) w <- matrix(args[1:n - 1], ncol = ncol(initialW))
+    else w <- args[1:n - 1]
+    dE(p, w, simils, t)
+  }
+  initialValues <- c(initialW, pInitial)
+  res <- optim(initialValues, func, grad, method = "BFGS")
   z <- list()
-  z$results <- c(coef1,coef2,coef3,coef4,coef5)
-  names(z$results) <- paste('m', 1:(length(z$results)), sep="")
-  z$avg <- mean(z$results)
+  z$newP <- res$par[length(res$par)]
+  if (z$newP < 1e-3) z$newP <- pInitial
+  if (is.matrix(initialW)) z$w <- matrix(res$par[1:length(res$par) - 1], ncol = ncol(initialW))
+  else z$w <- res$par[1:length(res$par) - 1]
+  z$E <- res$value
   z
 }
+
+## Derivatives of the Error functions ##
 
 opt2.dE.regression <- function(p, w, simils, t) {
   if (p <= 0) return(NA)
@@ -513,48 +466,4 @@ opt2.dE.multinomial <- function(p, w, simils, t) {
 }
 
 
-optimize_p_oneOpt <- function(simils, t, pInitial = 0.1, ..., trace = TRUE) {
 
-  if (is.numeric(t)) {
-    E <- E.regression
-    dE <- opt2.dE.regression
-    initialW <- numeric(ncol(simils) + 1)
-  }
-  else if (is.logical(t) || (is.factor(t) && nlevels(t) == 2)) {
-    E <- E.binomial
-    dE <- opt2.dE.binomial
-    initialW <- numeric(ncol(simils) + 1)
-  }
-  else if (is.factor(t) && nlevels(t) > 2) {
-    E <- E.multinomial
-    dE <- opt2.dE.multinomial
-    initialW <- matrix(1, ncol(simils) + 1, nlevels(t) - 1)
-  }
-  else stop('Not implemented (fp_utils)')
-  #Function to optimize
-  func <- function(args) {
-    n <- length(args)
-    p <- args[n]
-    if (is.matrix(initialW)) w <- matrix(args[1:n - 1], ncol = ncol(initialW))
-    else w <- args[1:n - 1]
-    E(p=p, simils=simils, t=t, w=w, reg=FALSE)
-  }
-
-  #Gradient function
-  grad <- function(args) {
-    n <- length(args)
-    p <- args[n]
-    if (is.matrix(initialW)) w <- matrix(args[1:n - 1], ncol = ncol(initialW))
-    else w <- args[1:n - 1]
-    dE(p, w, simils, t)
-  }
-  initialValues <- c(initialW, pInitial)
-  res <- optim(initialValues, func, grad, method = "BFGS")
-  z <- list()
-  z$newP <- res$par[length(res$par)]
-  if(z$newP < 1e-3) z$newP <- pInitial
-  if (is.matrix(initialW)) z$w <- matrix(res$par[1:length(res$par) - 1], ncol = ncol(initialW))
-  else z$w <- res$par[1:length(res$par) - 1]
-  z$E <- res$value
-  z
-}

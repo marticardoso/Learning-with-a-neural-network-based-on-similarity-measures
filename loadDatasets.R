@@ -1,4 +1,7 @@
 library(foreign)
+
+# Functions used to load datasets #
+
 ##############
 # Regression #
 ##############
