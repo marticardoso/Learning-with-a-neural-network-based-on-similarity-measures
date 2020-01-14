@@ -1,20 +1,23 @@
+## This file contains all functions related to the activation function (fp) and the way to set it
+## (optimization procedure, k-fold-CV, GCV)
+
 library(e1071)
 library(MASS)
-## File with functions related to the activation function (fp) and the optimization of p
 
+## Fp functions
 a <- function(p) -1/4+sqrt((1/2)^4 + p)
 fp <- function(x,p){
   if(x<=0.5) return(-p/((x-0.5)-a(p)) - a(p))
   else       return(-p/((x-0.5)+a(p)) + a(p) + 1)
 }
-#Derivates
+# Derivatives
 da <- function(p) 1/(2*sqrt((1/2)^4 + p))
 dfp <- function(x,p){
   if(x<=0.5) return((-((x-0.5) - a(p)) - p*da(p)) / (x-0.5-a(p))^2 - da(p))
   else       return((-((x-0.5) + a(p)) + p*da(p)) / (x-0.5+a(p))^2 + da(p))
 }
 
-#Apply fp and dfp to a matrix
+# Apply fp and dfp to a matrix
 apply.fp <- function(X, p) {
   a_p <- a(p)
   fp_X <- -p / ((X - 0.5) - a_p) - a_p
@@ -33,7 +36,7 @@ apply.dfp <- function(X, p) {
   return(dfp_X)
 }
 
-# Error function
+# Error function of a model with p and w
 E.func <- function(p, simils, t, w, reg = FALSE, lambda = 0) {
   if (is.logical(t) || (is.factor(t) && nlevels(t) == 2))
     return(E.binomial(p, simils, t, w, reg, lambda))
@@ -48,7 +51,7 @@ E.func <- function(p, simils, t, w, reg = FALSE, lambda = 0) {
     stop(gettextf("E func ('%s') is not supported.", class(t)))
   }
 
-# Error function (for a model)
+# Error function (for a GLM model)
 E.func.from_model <- function(p, simils, t, model) {
   return(E.func(p, simils, t, extractCoefficients(model), isRegularization(model), model$lambda))
 }
@@ -96,7 +99,6 @@ NRMSE.regression <- function(p, simils, t, model) {
 # Binomial Error function (E) #
 ##############
 
-
 E.binomial <- function(p, simils, t, w, reg = FALSE, lambda = 0) {
   if (p <= 0) return(NA)
   X <- apply.fp(simils, p)
@@ -117,7 +119,10 @@ accuracy.binomial <- function(p, simils, t, model) {
   if (p <= 0) return(NA)
   w <- extractCoefficients(model)
   X <- apply.fp(simils, p)
-  prob <- predict(model, data.frame(X), type = "response")
+
+  if (any(class(model) == "glmnet")) X <- as.matrix(X)
+  else X <- data.frame(X)
+  prob <- predict(model, X, type = "response")
   response <- prob >= 0.5
   tab <- table(Truth = t, Pred = response)
   return(sum(diag(tab)) / sum(tab))
@@ -163,11 +168,12 @@ ln <- function(v) {
 
 accuracy.multinomial <- function(p, simils, t, model) {
   if (p <= 0) return(NA)
-
   w <- extractCoefficients(model)
   X <- apply.fp(simils, p)
-  colnames(X) <- paste('X', colnames(X), sep = "")
-  response <- predict(model, data.frame(X), type = "class")
+  if (substring(colnames(X)[1], 1, 1) != 'X') colnames(X) <- paste('X', colnames(X), sep = "")
+  if (any(class(model) == "glmnet")) X <- as.matrix(X)
+  else X <- data.frame(X)
+  response <- predict(model, X, type = "class")
   tab <- table(Truth = t, Pred = response)
   return(sum(diag(tab)) / sum(tab))
 }

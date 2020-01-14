@@ -1,3 +1,6 @@
+## This file contains all functions related to the SNNs 
+## (create a model and predict new data)
+
 library(cluster)
 library(glmnet)
 library(nnet)
@@ -32,7 +35,7 @@ snn <- function(formula, data, subset = NULL, x = FALSE, y = FALSE, ..., trace =
   if (ret.y) z$y <- y
   z$formula <- formula
 
-  #Predict test data
+  # Predict test data
   if (!is.null(subset) && length(subset) < nrow(data)) {
     if (trace) cat('Predicting test data\n')
     mf.test <- model.frame(formula, data = data[-subset,], na.action = NULL, drop.unused.levels = TRUE)
@@ -68,7 +71,7 @@ snn.fit <- function(x, y, daisyObj = NULL,
   if (ncol(x) == 0L) stop("Null model")
   ny <- NCOL(y)
 
-  # Should the daisy be computed before the clustering procedure?
+  # Should the daisy be computed before the clustering procedure (with all data)?
   shouldComputeDaisyBeforeClustering <- snn.findclusters.needsDaisy(clust.control) || (!is.null(p.control) && p.control$method == 'G')
   if (shouldComputeDaisyBeforeClustering) {
     if (is.null(daisyObj)) {
@@ -152,11 +155,11 @@ snn.fit <- function(x, y, daisyObj = NULL,
   # Output class
   z <- list() 
 
-  #Problem fields
+  # Problem fields
   z$outputType <- class(y)
   if (class(y) == "factor") z$outputLevels <- levels(y)
 
-  #Daisy object
+  # Daisy object
   if (is.dissimilarity(daisyObj)) z$daisyObj <- attr(daisyObj, "daisyObj")
   else z$daisyObj <- daisyObj
   z$prototypes <- prototypes
@@ -413,7 +416,7 @@ predict.snn = function(object, newdata, type = c("response", "prob", "simils"), 
   test.x <- data.frame(apply.fp(x.simils, object$p))
   colnames(test.x) <- paste('X', row.names(object$prototypes), sep = "")
 
-  # Startdandize similarities when needed
+  # Standardize similarities when needed
   if (object$standardizeSimils) {
     dataScaled <- scale(test.x, center = object$scaled$center, scale = object$scaled$scale)
     test.x <- data.frame(dataScaled)
@@ -422,7 +425,7 @@ predict.snn = function(object, newdata, type = c("response", "prob", "simils"), 
   if (any(class(object$model) == "glmnet")) # Glmnet does not support data frame
     test.x <- as.matrix(test.x)
 
-  #Predict by type
+  # Predict by type
   if (object$outputType == "logical") {
     test.prob <- predict(object$model, test.x, type = "response")
     response <- test.prob >= 0.5

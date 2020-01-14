@@ -1,9 +1,11 @@
-# Source code of the Mixture of Expert 
+## This file contains all functions related to Mixture of Experts (MoE) ensemble model
+## (train the model and predict new data)
+
 library(dplyr)
 library(magrittr)
 library(ggplot2)
 
-# Function that predicts the output of the Ensemble of SNNs given an model (MoE)
+# Function that predicts the output of the Ensemble of SNNs given a model (MoE)
 MoE.predict <- function(object, x, snnX) {
   if (is.data.frame(x)) x <- data.matrix(x)
   if (is.data.frame(snnX)) snnX <- data.matrix(snnX)
@@ -35,7 +37,7 @@ MoE.predict <- function(object, x, snnX) {
   z
 }
 
-# Functio that creates the MoE model (optimize)
+# Function that creates the MoE model (optimize)
 MoE.optimize <- function(x, snnX, t, type, bIni = NULL, predByM = NULL) {
   # predByM: a list containing the features of x that can be used in each SNN
   m <- ncol(snnX)
@@ -94,7 +96,7 @@ MoE.optimize <- function(x, snnX, t, type, bIni = NULL, predByM = NULL) {
     MoE.E(x = x, snnX = snnX, t = t, b = b2)
   }
 
-  #Gradient function
+  # Gradient function
   grad <- function(args) {
     b2 <- extractBFromArgs(args)
     r <- -(MoE.dE(x = x, snnX = snnX, t = t, b = b2))
@@ -120,7 +122,6 @@ MoE.optimize <- function(x, snnX, t, type, bIni = NULL, predByM = NULL) {
 # Regression 
 ##
 
-# b = n x m
 MoE.E.regression <- function(x, snnX, t, b) {
   M <- ncol(b)
   o1 <- cbind(1, x) %*% b

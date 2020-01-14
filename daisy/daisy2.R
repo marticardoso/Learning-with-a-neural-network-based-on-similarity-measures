@@ -1,4 +1,4 @@
-
+# Modification of the daisy function that also returns the transformations applied to each variable
 dyn.load("daisy/daisy2.dll")
 dissiCl <- c("dissimilarity", "dist")
 

@@ -1,0 +1,2 @@
+In this folder, there are some scripts with functions used to test the implementation of this project and run the experiments.
+Also, folder unit-test has some tests of the functionality of the project functions.

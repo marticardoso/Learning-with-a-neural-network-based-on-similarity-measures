@@ -1,7 +1,9 @@
+## This file contains all functions related to the Ensemble of SNNs 
+## (create a model and predict new data)
+
 source('SNN.R')
-source('benchmarkutils.R')
 source('MoE.R')
-# Trace level
+source('test/benchmarkutils.R')
 
 # Function that creates en Ensemble of SNNs
 snn.bagging <- function(formula, data, subset = NULL,
@@ -240,7 +242,7 @@ predict.snn.bagging = function(object, newdata, type = c("response", "prob"), tr
     return(tmp)})
 
   if (trace) print('Join results (responses)')
-  #Transform prediction into a dataframe
+  # Transform prediction into a dataframe
   bagging.ds <- data.frame(row.names = row.names(newdata))
   for (i in 1:length(snn.sets.pred)) {
     snn.i.pred <- snn.sets.pred[[i]]
@@ -406,7 +408,7 @@ predict.snn.bagging = function(object, newdata, type = c("response", "prob"), tr
   z
 }
 
-# Function that gives the type of response variable
+# Function that gives the type of the response variable
 getTypeOfProblem <- function(y) {
   if (is.logical(y) || (is.factor(y) && nlevels(y) == 2)) type <- 'binomial'
   else if (is.factor(y) && nlevels(y) > 2) type <- 'multinomial'
