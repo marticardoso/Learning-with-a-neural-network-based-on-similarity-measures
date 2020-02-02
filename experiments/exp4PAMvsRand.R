@@ -15,9 +15,9 @@ source('test/loadDatasets.R')
 source('test/benchmarkutils.R')
 
 #Output folder
-exp4RegFolder <- 'Pictures/Experiments/Exp4/Reg/'
-exp4MultiFolder <- 'Pictures/Experiments/Exp4/Multi/'
-exp4BinFolder <- 'Pictures/Experiments/Exp4/Bin/'
+exp4RegFolder <- 'Pictures/'
+exp4MultiFolder <-'Pictures/'
+exp4BinFolder <- 'Pictures/'
 
 ################
 ## Regression ##
@@ -27,14 +27,16 @@ set.seed(2)
 regDs <- LoadRegressionProblems(large = FALSE)
 df <- runExperiment4(regDs, nRuns = 20)
 #save(df, file = "experiments/Exp4/Exp4Reg.Rdata")
-#load("experiments/Exp4/Exp4Reg.Rdata")
-ggplot(data = df$shortResult, aes(x = clust.method, y = accMean, group = dataset, color = dataset)) +
-  geom_point(size= 2, aes(shape = dataset)) + geom_line(alpha = 0.5) + ylab('NRMSE') + xlab('Clustering method') + ggtitle('Regression problems')
-#ggsave(paste(exp4RegFolder, 'Exp4_NRMSE_Regression.png', sep = ''), width = 5, height = 3.5)
+#load("experiments/Exp4/Exp4RegSmall.Rdata")
+ggplot(data = df$shortResult, aes(fill = clust.method, y = accMean, x = dataset)) +
+  geom_bar(stat = "identity", color = "black", position = position_dodge(), alpha = 1) + ylab('NRMSE') + xlab('Dataset') + ggtitle('Regression problems') +
+  guides(fill = guide_legend(title = "Clustering method")) + scale_fill_brewer(palette = "Blues")
+ggsave(paste(exp4RegFolder, 'Exp4_NRMSE_Regression3.png', sep = ''), width = 5, height = 3.5)
 
-ggplot(data = df$shortResult, aes(x = clust.method, y = timeMean, group = dataset, color = dataset)) +
-  geom_point(size = 2, aes(shape = dataset)) + geom_line(alpha = 0.5) + ylab('Execution time (s)') + xlab('Clustering method') + ggtitle('Regression problems')
-#ggsave(paste(exp4RegFolder, 'Exp4_Time_Regression.png', sep = ''), width = 5, height = 3.5)
+ggplot(data = df$shortResult, aes(fill = clust.method, y = timeMean, x = dataset, color = dataset)) +
+  geom_bar(stat = "identity", color = "black", position = position_dodge(), alpha = 1) + ylab('Execution time (s)') + xlab('Dataset') + ggtitle('Regression problems') +
+  guides(fill = guide_legend(title = "Clustering method")) + scale_fill_brewer(palette = "Blues")
+ggsave(paste(exp4RegFolder, 'Exp4_Time_Regression3.png', sep = ''), width = 5, height = 3.5)
 
 
 
@@ -45,14 +47,16 @@ ggplot(data = df$shortResult, aes(x = clust.method, y = timeMean, group = datase
 hc <- LoadBinClassProblems(large = FALSE)
 df <- runExperiment4(hc, nRuns = 20, classification = TRUE)
 #save(df, file = "experiments/Exp4/Exp4BinClass.Rdata")
-#load("experiments/Exp4/Exp4BinClass.Rdata")
-ggplot(data = df$shortResult, aes(x = clust.method, y = accMean, group = dataset, color = dataset)) +
-   geom_point(size = 2, aes(shape = dataset)) + geom_line(alpha = 0.5) + ylab('Accuracy (%)') + xlab('Clustering method') + ggtitle('Binomial classification problems')
-#ggsave(paste(exp4BinFolder, 'Exp4_Acc_BinClass.png', sep = ''), width = 5, height = 3.5)
+#load("experiments/Exp4/Exp4BinClassSmall.Rdata")
+ggplot(data = df$shortResult, aes(fill = clust.method, y = accMean, x = dataset, color = dataset)) +
+   geom_bar(stat = "identity", color = "black", position = position_dodge(), alpha = 1) + ylab('Accuracy (%)') + xlab('Dataset') + ggtitle('Binomial classification problems') +
+   guides(fill = guide_legend(title = "Clustering method")) + theme(axis.text.x = element_text(angle = 45, hjust = 1)) + coord_cartesian(ylim = c(75, 85)) + scale_fill_brewer(palette = "Blues")
+ggsave(paste(exp4BinFolder, 'Exp4_Acc_BinClass3.png', sep = ''), width = 5, height = 3.5)
 
-ggplot(data = df$shortResult, aes(x = clust.method, y = timeMean, group = dataset, color = dataset)) +
-   geom_point(size = 2, aes(shape = dataset)) + geom_line(alpha = 0.5) + ylab('Execution time (s)') + xlab('Clustering method') + ggtitle('Binomial classification problems')
-#ggsave(paste(exp4BinFolder, 'Exp4_Time_BinClass.png', sep = ''), width = 5, height = 3.5)
+ggplot(data = df$shortResult, aes(fill = clust.method, y = timeMean, x = dataset, color = dataset)) +
+   geom_bar(stat = "identity", color = "black", position = position_dodge(), alpha = 1) + ylab('Execution time (s)') + xlab('Dataset') + ggtitle('Binomial classification problems') +
+   guides(fill = guide_legend(title = "Clustering method")) + theme(axis.text.x = element_text(angle = 45, hjust = 1)) + scale_fill_brewer(palette = "Blues")
+ggsave(paste(exp4BinFolder, 'Exp4_Time_BinClass3.png', sep = ''), width = 5, height = 3.5)
 
 #############
 ## Multinomial Classification ##
@@ -61,15 +65,17 @@ ggplot(data = df$shortResult, aes(x = clust.method, y = timeMean, group = datase
 hc <- LoadMultiClassProblems(large = FALSE)
 df <- runExperiment4(hc, nRuns = 10, classification = TRUE)
 #save(df, file = "experiments/Exp4/Exp4MultiClass.Rdata")
-#load("experiments/Exp4/Exp4MultiClass.Rdata")
+#load("experiments/Exp4/Exp4MultiClassSmall.Rdata")
 
-ggplot(data = df$shortResult, aes(x = clust.method, y = accMean, group = dataset, color = dataset)) +
-   geom_point(size = 2, aes(shape = dataset)) + geom_line(alpha = 0.5) + ylab('Accuracy (%)') + xlab('Clustering method') + ggtitle('Multinomial classification problems')
-#ggsave(paste(exp4MultiFolder, 'Exp4_Acc_MultiClass.png', sep = ''), width = 5, height = 3.5)
+ggplot(data = df$shortResult, aes(fill = clust.method, y = accMean, x = dataset, color = dataset)) +
+   geom_bar(stat = "identity", color = "black", position = position_dodge(), alpha = 1) + ylab('Accuracy (%)') + xlab('Dataset') + ggtitle('Multinomial classification problems') +
+   guides(fill = guide_legend(title = "Clustering method")) + theme(axis.text.x = element_text(angle = 45, hjust = 1)) + coord_cartesian(ylim = c(50, 100)) + scale_fill_brewer(palette = "Blues")
+ggsave(paste(exp4MultiFolder, 'Exp4_Acc_MultiClass3.png', sep = ''), width = 5, height = 3.5)
 
-ggplot(data = df$shortResult, aes(x = clust.method, y = timeMean, group = dataset, color = dataset)) +
-   geom_point(size = 2, aes(shape = dataset)) + geom_line(alpha = 0.5) + ylab('Execution time (s)') + xlab('Clustering method') + ggtitle('Multinomial classification problems')
-#ggsave(paste(exp4MultiFolder, 'Exp4_Time_MultiClass.png', sep = ''), width = 5, height = 3.5)
+ggplot(data = df$shortResult, aes(fill = clust.method, y = timeMean, x = dataset, color = dataset)) +
+   geom_bar(stat = "identity", color = "black", position = position_dodge(), alpha = 1) + ylab('Execution time (s)') + xlab('Dataset') + ggtitle('Multinomial classification problems') +
+   guides(fill = guide_legend(title = "Clustering method")) + theme(axis.text.x = element_text(angle = 45, hjust = 1)) + scale_fill_brewer(palette = "Blues")
+ggsave(paste(exp4MultiFolder, 'Exp4_Time_MultiClass3.png', sep = ''), width = 5, height = 3.5)
 
 
 
