@@ -1,10 +1,12 @@
 # Learning with a neural network based on similarity measures
-## Master thesis
-## Master in Innovation and Research in Informatics - FIB - MIRI
-## Data science speciality
 
+Master thesis
 
- Author: Marti Cardoso i Sabé
+Master in Innovation and Research in Informatics - FIB - MIRI
+
+Data science speciality
+
+Author: Marti Cardoso i Sabé
  
  ## Abstract 
 
