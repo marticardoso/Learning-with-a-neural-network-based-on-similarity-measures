@@ -8,6 +8,9 @@ Master in Innovation and Research in Informatics (Data science) - FIB - UPC
 
  Two new learning algorithms are studied: a neural network based on similarity measures and an Ensemble of the first method. The goal of this thesis is to understand these two methods, derive training algorithms, analyse the impact of the similarity layer and compare them with traditional methods.
 
+## Keywords
+
+Similarity measures, Similarity Neural Networks, Ensemble learning, Neural networks
 
 ## Folder structure
 
