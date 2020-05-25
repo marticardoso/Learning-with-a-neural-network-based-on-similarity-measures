@@ -1,16 +1,15 @@
 # Learning with a neural network based on similarity measures
 
-Master thesis
+Source code of my Master thesis. 
 
-Master in Innovation and Research in Informatics - FIB - MIRI
-
-Data science speciality
-
-Author: Marti Cardoso i Sabé
+Master in Innovation and Research in Informatics (data science speciality) - FIB - MIRI
  
  ## Abstract 
 
  Two new learning algorithms are studied: a neural network based on similarity measures and an Ensemble of the first method. The goal of this thesis is to understand these two methods, derive training algorithms, analyse the impact of the similarity layer and compare them with traditional methods.
+
+
+
 
 ## Folder structure
 
@@ -41,3 +40,6 @@ These are the main files:
 
 - test/* (folder):
 	This folder contains some useful functions to test the implementation and also some unit-tests to check the right functionality of the main functions.
+
+
+
